@@ -27,15 +27,15 @@ int main() {
   hbsm::HierarchicalBlockSparseMatrix<real> *A = new hbsm::HierarchicalBlockSparseMatrix<real>();	
   
   hbsm::HierarchicalBlockSparseMatrix<real>::Params params;
-  params.blocksize = 4;
+  params.blocksize = 20;
   
   A->set_params(params);
   
-  A->resize(32,32);
+  A->resize(20,20);
   
   A->clear();
   
-  A->resize(16,16);
+  A->resize(40,10);
   
   delete A;
   

@@ -58,7 +58,7 @@ namespace hbsm {
 			bool lowest_level() const {
 				return (nRows == blocksize) && (nCols == blocksize) && !children_exist();
 			}
-			
+						
 	public:
 			struct Params {
 			  int blocksize;
@@ -122,37 +122,54 @@ namespace hbsm {
 	template<class Treal> 
 		void HierarchicalBlockSparseMatrix<Treal>::resize(int nRows_, int nCols_) {
 		assert(blocksize > 0);
-	
-		if(nRows_ != nCols_){
-			throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::resize: so far only square matrices are supported.");
-		}
 		
-		if(is_power_of_2(nRows_ / blocksize) && (nRows_ % blocksize == 0)){
-			// ok, proceed further
-		}
-		else{
-			throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::resize: so far matrix size should be blocksize x 2^p.");
-		}
-				
-		//arrived at lowest level
-		if(nRows_ == blocksize){
+		// lowest level
+		// FIXME is it the right way to check if lowest level reached?
+		if(nRows_ == blocksize && nCols_ == blocksize){
 			nRows = nRows_;
 			nCols = nCols_;
+			submatrix.clear();
 			return;
 		}
+	
+		// actually, matrix is always kept square, with padding with zeros where necessary
+		// the "virtual dimension" can be computed as blocksize * 2^P, 
+		// where P is such that blocksize * 2^(P-1) <= max(nRows_, nCols_) <= blocksize * 2^P 
 		
-		// not the lowest one, fix sizes on this level, go deeper
-		nRows = nRows_;
-		nCols = nCols_;
+		int maxdim = ((nRows_ > nCols_) ? nRows_ : nCols_);
+		
+		//how many times block covers maxdim
+		int n_covers = maxdim / blocksize;
+		if(maxdim % blocksize != 0) n_covers += 1;
+		
+		// now we need to find P such that 2^(P-1) <= n_covers <= 2^P
+		int P = 1;
+		int two_to_power_P = 2;
+		while(n_covers >  two_to_power_P){
+			two_to_power_P *= 2;
+			P += 1;
+		}
+		
+		int virtual_size = blocksize * two_to_power_P;
+		
+		/*
+		std::cout << "maxdim / blocksize = " << maxdim / blocksize << std::endl;
+		std::cout << "maxdim % blocksize = " << maxdim % blocksize << std::endl;
+		std::cout << "n_covers = " << n_covers << std::endl;
+		std::cout << "P = " << P << std::endl;
+		std::cout << "virtual size is " << virtual_size << std::endl;
+		*/
+		
+		nRows = virtual_size;
+		nCols = virtual_size;
+	
 		
 		for(int i = 0; i < 4; ++i){
 			if(children[i] != NULL) delete children[i];
 			children[i] = new HierarchicalBlockSparseMatrix<Treal>();			
  			children[i]->set_params(get_params());
-			children[i]->resize(nRows_ / 2, nCols_ / 2);
+			children[i]->resize(nRows / 2, nCols / 2);
 		}
-		
-		std::cout << "resized with " <<  nRows << " and " << nCols << std::endl;
 	}
 	
 	template<class Treal> 
@@ -169,8 +186,6 @@ namespace hbsm {
 					delete children[i];
 				}
 			}	
-
-			std::cout << "Cleared " <<std::endl;
 		}
   
 } /* end namespace hbsm */
