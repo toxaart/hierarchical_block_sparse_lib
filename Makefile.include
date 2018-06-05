@@ -1,0 +1,23 @@
+CC=g++
+BUILD_WITH_CUDA=0
+
+ifeq ($(BUILD_WITH_CUDA),1)
+CXXFLAGS=-O3 -m64 -I/usr/local/cuda/include -DBUILD_WITH_CUDA=$(BUILD_WITH_CUDA)
+LDFLAGS=-lcudart -lcublas 
+else
+CXXFLAGS=-O3
+LDFLAGS= 
+endif
+
+BSMPATH=$(realpath $(TOPDIR)/source)
+BSMINCL=-I$(BSMPATH)
+BSMDIR=$(BSMPATH)
+
+CUDAUTILSPATH=$(realpath $(TOPDIR)/../utilities/cuda_utils/source)
+CUDAUTILSINCL=-I$(CUDAUTILSPATH)
+CUDAUTILSDIR=$(CUDAUTILSPATH)
+
+GBLASPATH=$(realpath $(TOPDIR)/../utilities/gblas/source)
+GBLASINCL=-I$(GBLASPATH)
+GBLASDIR=$(GBLASPATH)
+
