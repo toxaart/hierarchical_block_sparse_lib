@@ -1,0 +1,2 @@
+This repository is intended for a hierarchical block-sparse matrix
+library that Anton Artemov is working on.
