@@ -1,0 +1,6 @@
+*.o
+*.a
+*.d
+test_source/test_matrix_creation
+test_source/test_matrix_operations
+test_source/test_matrix_alloc_problem

@@ -13,6 +13,7 @@
 #include "hierarchical_block_sparse_lib.h"
 #include "test_utils.h"
 
+
 static int test_creation() {
 
 
@@ -27,15 +28,32 @@ int main() {
   hbsm::HierarchicalBlockSparseMatrix<real> *A = new hbsm::HierarchicalBlockSparseMatrix<real>();	
   
   hbsm::HierarchicalBlockSparseMatrix<real>::Params params;
-  params.blocksize = 20;
+  params.blocksize = 4;
   
   A->set_params(params);
   
-  A->resize(20,20);
+  A->resize(25,15);
   
-  A->clear();
+  std::vector<int> rows, cols;
+  std::vector<real> vals;
   
-  A->resize(40,10);
+  rows.push_back(0);
+  cols.push_back(0);
+  vals.push_back(1.0);
+  
+  rows.push_back(1);
+  cols.push_back(1);
+  vals.push_back(1.0);
+  
+  rows.push_back(7);
+  cols.push_back(7);
+  vals.push_back(2.0);
+  
+  rows.push_back(14);
+  cols.push_back(14);
+  vals.push_back(2.0);
+  
+  A->assign_from_vectors_general(rows,cols,vals,false,false);
   
   delete A;
   

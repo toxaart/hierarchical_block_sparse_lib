@@ -41,6 +41,8 @@ namespace hbsm {
 	private:
 			int nRows; // number of rows on the current level
 			int nCols; // number of cols on the current level
+			int nRows_orig; // before 'virtual size' has been computed
+			int nCols_orig; // before 'virtual size' has been computed
 			int blocksize; // size of blocks at the lowest level (blocksize x blocksize)
 			HierarchicalBlockSparseMatrix* children[4]; // array of pointers to the next level.
 			/*		child0 | child2
@@ -64,7 +66,7 @@ namespace hbsm {
 			  int blocksize;
 			};
 		
-			HierarchicalBlockSparseMatrix():nRows(0), nCols(0), blocksize(-1){
+			HierarchicalBlockSparseMatrix():nRows(0), nCols(0),nRows_orig(0), nCols_orig(0), blocksize(-1){
 				children[0] = NULL;
 				children[1] = NULL;
 				children[2] = NULL;
@@ -89,6 +91,11 @@ namespace hbsm {
 			bool empty() const;
 			void resize(int nRows_, int nCols_);
 			void clear();
+			void assign_from_vectors_general(const std::vector<int> & rows,
+				     const std::vector<int> & cols,
+				     const std::vector<Treal> & values,
+				     bool useMax,
+					 bool boundaries_checked);
     };
 	
 	
@@ -123,6 +130,11 @@ namespace hbsm {
 		void HierarchicalBlockSparseMatrix<Treal>::resize(int nRows_, int nCols_) {
 		assert(blocksize > 0);
 		
+		submatrix.clear();
+		
+		nRows_orig = nRows_;
+		nCols_orig = nCols_;
+		
 		// lowest level
 		// FIXME is it the right way to check if lowest level reached?
 		if(nRows_ == blocksize && nCols_ == blocksize){
@@ -152,24 +164,17 @@ namespace hbsm {
 		
 		int virtual_size = blocksize * two_to_power_P;
 		
-		/*
+		
 		std::cout << "maxdim / blocksize = " << maxdim / blocksize << std::endl;
 		std::cout << "maxdim % blocksize = " << maxdim % blocksize << std::endl;
 		std::cout << "n_covers = " << n_covers << std::endl;
 		std::cout << "P = " << P << std::endl;
 		std::cout << "virtual size is " << virtual_size << std::endl;
-		*/
+		
 		
 		nRows = virtual_size;
 		nCols = virtual_size;
 	
-		
-		for(int i = 0; i < 4; ++i){
-			if(children[i] != NULL) delete children[i];
-			children[i] = new HierarchicalBlockSparseMatrix<Treal>();			
- 			children[i]->set_params(get_params());
-			children[i]->resize(nRows / 2, nCols / 2);
-		}
 	}
 	
 	template<class Treal> 
@@ -186,6 +191,140 @@ namespace hbsm {
 					delete children[i];
 				}
 			}	
+		}
+		
+	template<class Treal> 
+		void HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors_general(const std::vector<int> & rows,
+				     const std::vector<int> & cols,
+				     const std::vector<Treal> & values,
+				     bool useMax,
+					 bool boundaries_checked) {
+			
+			assert(blocksize > 0);
+			if(rows.size() != values.size() || cols.size() != values.size())
+				throw std::runtime_error("Error in assign_from_vectors: bad sizes.");
+					
+			// this will be done only at the top level, later it is not necessary
+			if(!boundaries_checked){
+				for(int i = 0; i < values.size(); ++i){
+					if( rows[i] < 0 ||  rows[i] > nRows_orig-1 || cols[i] < 0 || cols[i] > nCols_orig - 1) 
+						throw std::runtime_error("Error in assign_from_vectors: index outside matrix boundaries.");
+				}
+			}
+			
+			if(lowest_level()){
+				// assume that the matrix has been properly resized already;
+				submatrix.clear();
+				submatrix.resize(nCols*nRows);
+				
+				for(int i = 0; i < nCols*nRows; ++i){
+					submatrix[i] = 0.0;
+				}
+				
+				for(size_t i = 0; i < values.size(); ++i){
+					int row = rows[i];
+					int col = cols[i];
+					Treal val = values[i];
+					
+					if(useMax){
+						submatrix[col * nRows + row] = (val > submatrix[col * nRows + row]) ? val : submatrix[col * nRows + row];
+					}
+					else{
+						submatrix[col * nRows + row] = val;
+					}
+					std::cout << "Value added at lowest level" << std::endl;
+				}
+				
+				
+				return;
+			}
+			
+			// now we have to split arrays into 4 parts and recursively apply the same procedure on children
+			std::vector<int> cols0,cols1,cols2,cols3;
+			std::vector<int> rows0,rows1,rows2,rows3;
+			std::vector<Treal> vals0,vals1,vals2,vals3;
+			
+			// the offset, when providing parts of vectors to the next level their "coordinates" will be shifted
+			int offset = nRows/2;
+			
+			for(size_t i = 0; i < values.size(); ++i){
+											
+				int row = rows[i];
+				int col = cols[i];
+				Treal val = values[i];
+			
+				// this part goes to child0
+				if(row < offset && col < offset){
+					rows0.push_back(row);
+					cols0.push_back(col);
+					vals0.push_back(val);
+				}
+				
+				// this part goes to child1
+				if(offset <= row && row < nRows && col < offset){
+					rows1.push_back(row-offset);
+					cols1.push_back(col);
+					vals1.push_back(val);
+				}
+				
+				// this part goes to child2
+				if(row < offset && offset <= col && col < nCols){
+					rows2.push_back(row);
+					cols2.push_back(col-offset);
+					vals2.push_back(val);
+				}
+				
+				// this part goes to child3
+				if(offset <= row && row < nRows && offset <= col && col < nCols){
+					rows3.push_back(row-offset);
+					cols3.push_back(col-offset);
+					vals3.push_back(val);
+				}
+				
+			}
+			
+			
+			
+			if(vals0.size() > 0){
+				if(children[0] != NULL){
+					throw std::runtime_error("Error in assign_from_vectors: non-null child0 matrix occured.");
+				}
+				children[0] = new HierarchicalBlockSparseMatrix<Treal>();			
+			    children[0]->set_params(get_params());
+				children[0]->resize(nRows / 2, nCols / 2);
+				children[0]->assign_from_vectors_general(rows0, cols0, vals0, useMax,true);
+			}
+			
+			if(vals1.size() > 0){
+				if(children[1] != NULL){
+					throw std::runtime_error("Error in assign_from_vectors: non-null child1 matrix occured.");
+				}
+				children[1] = new HierarchicalBlockSparseMatrix<Treal>();			
+			    children[1]->set_params(get_params());
+				children[1]->resize(nRows / 2, nCols / 2);
+				children[1]->assign_from_vectors_general(rows1, cols1, vals1, useMax,true);
+			}
+			
+			if(vals2.size() > 0){
+				if(children[2] != NULL){
+					throw std::runtime_error("Error in assign_from_vectors: non-null child2 matrix occured.");
+				}
+				children[2] = new HierarchicalBlockSparseMatrix<Treal>();			
+			    children[2]->set_params(get_params());
+				children[2]->resize(nRows / 2, nCols / 2);
+				children[2]->assign_from_vectors_general(rows2, cols2, vals2, useMax,true);
+			}
+			
+			if(vals3.size() > 0){
+				if(children[3] != NULL){
+					throw std::runtime_error("Error in assign_from_vectors: non-null child3 matrix occured.");
+				}
+				children[3] = new HierarchicalBlockSparseMatrix<Treal>();			
+			    children[3]->set_params(get_params());
+				children[3]->resize(nRows / 2, nCols / 2);
+				children[3]->assign_from_vectors_general(rows3, cols3, vals3, useMax,true);
+			}		
+			
 		}
   
 } /* end namespace hbsm */
