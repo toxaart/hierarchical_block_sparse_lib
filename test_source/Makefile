@@ -32,4 +32,4 @@ check: all
 #	./test_matrix_alloc_problem 7 1 1 1 1
 
 clean:
-	rm -f test_matrix_creation #test_matrix_operations test_matrix_alloc_problem *.o *.d
+	rm -f test_matrix_creation *.o *.d #test_matrix_operations test_matrix_alloc_problem 
