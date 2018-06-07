@@ -17,7 +17,7 @@ template<typename MatrixType>
 static int test_creation() {
 	typename MatrixType::Params param;
 #if 1  
-	param.blocksize = 1; // Only for block sparse matrix
+	param.blocksize = 4; // Only for block sparse matrix
 #endif
 
 	MatrixType M;
@@ -27,7 +27,7 @@ static int test_creation() {
 	if(!M.empty())
 		throw std::runtime_error("Error: M.empty() gave wrong result.");
 
-	M.resize(3, 7);
+	M.resize(4, 4);
 	
 	if(M.empty())
 		throw std::runtime_error("Error: M.empty() gave wrong result.");
@@ -36,7 +36,7 @@ static int test_creation() {
 	if(!M.empty())
 		throw std::runtime_error("Error: M.empty() gave wrong result.");
 
-	M.resize(3, 7);
+	M.resize(16, 16);
 	if(M.get_frob_squared() != 0)
 		throw std::runtime_error("Error: M.get_frob_squared() != 0 for newly created matrix.");
 
@@ -49,11 +49,11 @@ static int test_creation() {
 		std::vector<int> rows(nValues);
 		std::vector<int> cols(nValues);
 		std::vector<double> values(nValues);
-		rows  [0] = 2;
-		cols  [0] = 6;
+		rows  [0] = 0;
+		cols  [0] = 0;
 		values[0] = refValue1;
 		rows  [1] = 1;
-		cols  [1] = 3;
+		cols  [1] = 1;
 		values[1] = refValue2;
 		M.assign_from_vectors(rows, cols, values);
 		double expected_frob_sq = refValue1*refValue1 + refValue2*refValue2;
@@ -67,12 +67,12 @@ static int test_creation() {
 		int nValues2 = 3;
 		std::vector<int> rows(nValues2);
 		std::vector<int> cols(nValues2);
-		rows  [0] = 2;
-		cols  [0] = 6;
+		rows  [0] = 0;
+		cols  [0] = 0;
 		rows  [1] = 1;
-		cols  [1] = 3;
-		rows  [2] = 0;
-		cols  [2] = 5;
+		cols  [1] = 1;
+		rows  [2] = 3;
+		cols  [2] = 3;
 		std::vector<double> values;
 		
 		M.get_values(rows, cols, values);
@@ -87,10 +87,46 @@ static int test_creation() {
 			throw std::runtime_error("Error: wrong result from get_values().");
 	}
 	
-	// Test write_to_buffer()
+
 	size_t size = M.get_size();
+	std::cout << "C size before clearing " << size <<std::endl; 
+	
+/*
+	M.clear();
+	
+	size = M.get_size();
+    std::cout << "C size after clearing " << size <<std::endl; */
+	
 	std::vector<char> buf(size);
 	M.write_to_buffer(&buf[0], size);
+	
+	
+	MatrixType B;
+	B.assign_from_buffer(&buf[0], size);
+	
+	std::cout << "|M|^2 = " << M.get_frob_squared() << std::endl;
+	std::cout << "|B|^2 = " << B.get_frob_squared() << std::endl;
+	
+	{
+		int nValues3 = 3;
+		std::vector<int> rows(nValues3);
+		std::vector<int> cols(nValues3);
+		rows  [0] = 0;
+		cols  [0] = 0;
+		rows  [1] = 1;
+		cols  [1] = 1;
+		rows  [2] = 3;
+		cols  [2] = 3;
+		std::vector<double> values_M, values_B;
+	
+		M.get_values(rows, cols, values_M);
+		B.get_values(rows, cols, values_B);
+		
+		for(int i = 0; i < nValues3; ++i){
+			std::cout << values_M[i] << " " << values_B[i] << std::endl;
+		}
+	
+	}
 
 	return 0;
 }

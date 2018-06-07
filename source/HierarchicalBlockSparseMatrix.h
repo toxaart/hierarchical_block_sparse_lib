@@ -45,7 +45,7 @@ namespace hbsm {
 			int nRows_orig; // before 'virtual size' has been computed
 			int nCols_orig; // before 'virtual size' has been computed
 			int blocksize; // size of blocks at the lowest level (blocksize x blocksize)
-			HierarchicalBlockSparseMatrix* children[4]; // array of pointers to the next level.
+			HierarchicalBlockSparseMatrix<real>* children[4]; // array of pointers to the next level.
 			/*		child0 | child2
 			 * 		--------------		
 			 *      child1 | child3
@@ -82,7 +82,7 @@ namespace hbsm {
 				submatrix.clear();
 			}
 
-			int get_n_rows() const { return nRows_orig; } // returns values for 'original' matrix, before it's been covered with blocksize and hierarchy was built
+			int get_n_rows() const { return nRows_orig; }
 			int get_n_cols() const { return nCols_orig; }
 			void set_params(Params const & param); 
 			Params get_params() const;
@@ -251,18 +251,32 @@ namespace hbsm {
 	
 	template<class Treal> 
 		void HierarchicalBlockSparseMatrix<Treal>::clear() {
-			if(lowest_level()){
-				submatrix.clear();
+			
+			if(empty()){
+				std::cout << "Clear() called on an empty matrix" << std::endl;
 				return;
 			}
-			nCols = 0;
-			nRows = 0;
+			
+			if(lowest_level()){
+				submatrix.clear();
+				nRows = 0;
+				nCols = 0;
+				if(children_exist()){
+					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::clear: children exist on leaf level.");
+				}
+				return;
+			}
+			
 			for(int i = 0; i < 4; ++i){
 				if(children[i] != NULL){
 					children[i]->clear();
 					delete children[i];
+					children[i] = NULL;
 				}
-			}	
+	
+			}
+			nRows = 0;
+			nCols = 0;
 		}
 		
 	template<class Treal> 
@@ -633,36 +647,28 @@ namespace hbsm {
 				return 5 * sizeof(int) + 4 * sizeof(size_t) + submatrix.size() * sizeof(Treal);				
 			}
 		
-			size_t totalsize = 5 * sizeof(int);
+			size_t totalsize = 5 * sizeof(int) + 4 * sizeof(size_t); // keep sizes of children in a row!
 		
-			// every child writes its own size even if it is zero
+			
 			if(children[0] != NULL){
-				totalsize += sizeof(size_t) + children[0]->get_size();
+				totalsize += children[0]->get_size();
 			}
-			else{
-				totalsize += sizeof(size_t);
-			}
+	
 			
 			if(children[1] != NULL) {
-				totalsize += sizeof(size_t) + children[1]->get_size();
+				totalsize += children[1]->get_size();
 			}
-			else{
-				totalsize += sizeof(size_t);
-			}
+			
 			
 			if(children[2] != NULL){
-				totalsize += sizeof(size_t) + children[2]->get_size();
-			}
-			else{
-				totalsize += sizeof(size_t);
+				totalsize += children[2]->get_size();
 			}
 			
+			
 			if(children[3] != NULL){
-				totalsize += sizeof(size_t) + children[3]->get_size();
+				totalsize += children[3]->get_size();
 			}
-			else{
-				totalsize += sizeof(size_t);
-			}
+		
 			
 			
 
@@ -683,36 +689,50 @@ namespace hbsm {
 			char* p = dataBuffer;
 			
 			if(empty()){
+				
+				std::cout << "empty case in write_to_buffer, buffer size " << bufferSize << std::endl;
+				int n_bytes_written = 0;
 			
 				memcpy(p, &nRows, sizeof(int));
 				p += sizeof(int);
+				n_bytes_written += sizeof(int);
 				
 				memcpy(p, &nCols, sizeof(int));
 				p += sizeof(int);
+				n_bytes_written += sizeof(int);
 				
 				memcpy(p, &nRows_orig, sizeof(int));
 				p += sizeof(int);
+				n_bytes_written += sizeof(int);
 				
 				memcpy(p, &nCols_orig, sizeof(int));
 				p += sizeof(int);
+				n_bytes_written += sizeof(int);
 				
 				memcpy(p, &blocksize, sizeof(int));
 				p += sizeof(int);
+				n_bytes_written += sizeof(int);
 				
 				//no children - write 4 zeros!
 				size_t zero_size = 0;
 				memcpy(p, &zero_size, sizeof(size_t));
 				p += sizeof(size_t);
+				n_bytes_written += sizeof(size_t);
 				
 				memcpy(p, &zero_size, sizeof(size_t));
 				p += sizeof(size_t);
+				n_bytes_written += sizeof(size_t);
 				
 				memcpy(p, &zero_size, sizeof(size_t));
 				p += sizeof(size_t);
+				n_bytes_written += sizeof(size_t);
 				
 				memcpy(p, &zero_size, sizeof(size_t));
 				p += sizeof(size_t);
-		
+				n_bytes_written += sizeof(size_t);
+				
+				std::cout << "n_bytes_written " << n_bytes_written <<std::endl;
+ 		
 				return;
 			}
 			
@@ -797,52 +817,38 @@ namespace hbsm {
 			memcpy(p, &blocksize, sizeof(int));
 			p += sizeof(int);
 			
-			if(size_child0 > 0){ // if child size is > 0, write size and the child itself
-				memcpy(p, &size_child0, sizeof(size_t));
-				p += sizeof(size_t);
+			// write sizes of children even if they are zeros!
+			memcpy(p, &size_child0, sizeof(size_t));
+			p += sizeof(size_t);
+
+			memcpy(p, &size_child1, sizeof(size_t));
+			p += sizeof(size_t);
+
+		    memcpy(p, &size_child2, sizeof(size_t));
+		    p += sizeof(size_t);
+				
+			memcpy(p, &size_child3, sizeof(size_t));
+			p += sizeof(size_t);
 			
+			
+		   if(size_child0 > 0){ // if child size is > 0, write size and the child itself
 				memcpy(p, &buf_child0[0],  size_child0);
 				p += size_child0;
 			}
-			else{
-				memcpy(p, &size_child0, sizeof(size_t));
-				p += sizeof(size_t); // if zero, then only the size!
-			}
 			
 			if(size_child1 > 0){
-				memcpy(p, &size_child1, sizeof(size_t));
-				p += sizeof(size_t);
-				
 				memcpy(p, &buf_child1[0],  size_child1);
 				p += size_child1;
 			}
-			else{
-				memcpy(p, &size_child1, sizeof(size_t));
-				p += sizeof(size_t);
-			}
 			
 			if(size_child2 > 0){
-				memcpy(p, &size_child2, sizeof(size_t));
-				p += sizeof(size_t);
-				
 				memcpy(p, &buf_child2[0],  size_child2);
 				p += size_child2;
 			}
-			else{
-				memcpy(p, &size_child2, sizeof(size_t));
-				p += sizeof(size_t);
-			}
 			
-			if(size_child3 > 0){
-				memcpy(p, &size_child3, sizeof(size_t));
-				p += sizeof(size_t);
-				
+			if(size_child3 > 0){				
 				memcpy(p, &buf_child3[0],  size_child3);
 				p += size_child3;
-			}
-			else{
-				memcpy(p, &size_child3, sizeof(size_t));
-				p += sizeof(size_t);
 			}
 			
 		}
@@ -855,7 +861,7 @@ namespace hbsm {
 			
 			int n_bytes_left_to_read = bufferSize;
 			
-			if (bufferSize < 5 * sizeof(int))
+			if (bufferSize < 5 * sizeof(int) + 4 * sizeof(size_t))
 			  throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::assign_from_buffer(): buffer too small.");
 			
 
@@ -877,7 +883,25 @@ namespace hbsm {
 
 			memcpy(&blocksize, p, sizeof(int));
 			p += sizeof(int);	
-			n_bytes_left_to_read -= sizeof(int);		
+			n_bytes_left_to_read -= sizeof(int);	
+
+			size_t child0_size, child1_size, child2_size, child3_size;
+			
+			memcpy(&child0_size, p, sizeof(size_t));
+			p += sizeof(size_t);	
+			n_bytes_left_to_read -= sizeof(size_t);		
+
+			memcpy(&child1_size, p, sizeof(size_t));
+			p += sizeof(size_t);	
+			n_bytes_left_to_read -= sizeof(size_t);
+
+			memcpy(&child2_size, p, sizeof(size_t));
+			p += sizeof(size_t);	
+			n_bytes_left_to_read -= sizeof(size_t);
+
+			memcpy(&child3_size, p, sizeof(size_t));
+			p += sizeof(size_t);	
+			n_bytes_left_to_read -= sizeof(size_t);	
 		
 			this->resize(nRows, nCols);
 
@@ -887,19 +911,96 @@ namespace hbsm {
 				return;
 			}
 		
-			std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;
+			//std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;			
 			
-			size_t size_child0, size_child1, size_child2, size_child3;
-			memcpy(&size_child0, p, sizeof(size_t));
-			p += sizeof(size_t);
-			n_bytes_left_to_read -= sizeof(size_t);
-
-			std::cout << "child0 has size " << size_child0 << std::endl;
+			//std::cout << "child0 has size " << child0_size << ", child1 " << child1_size << ", child2 " << child2_size << ", child3 " << child3_size << std::endl;
 		
-			/*
-			 * Idea: format is as follows: nRows nCols nRows_orig nCols_orig blocksize child0_size CHILD0 child1_size CHILD1 child2_size CHILD2 child3_size CHILD3 sizeof(submatrix) elements
-			 * this should allow to write recursive structure to buffer with any configuration
-			 * */
+			if(child0_size > 0){
+				if(children[0] != NULL) 
+					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::assign_from_buffer(): non-null child exist!");
+					
+				char child0_buf[child0_size];
+				memcpy(&child0_buf[0], p, child0_size);
+				p += child0_size;	
+				n_bytes_left_to_read -= child0_size;
+
+				children[0] = new HierarchicalBlockSparseMatrix<Treal>();
+				children[0]->assign_from_buffer(&child0_buf[0], child0_size);
+
+				//std::cout << "Child 0 has been read " << std::endl;
+				//std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;	
+			}
+			
+			if(child1_size > 0){
+				if(children[1] != NULL) 
+					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::assign_from_buffer(): non-null child exist!");
+					
+				char child1_buf[child1_size];
+				memcpy(&child1_buf[0], p, child1_size);
+				p += child1_size;	
+				n_bytes_left_to_read -= child1_size;
+
+				children[1] = new HierarchicalBlockSparseMatrix<Treal>();
+				children[1]->assign_from_buffer(&child1_buf[0], child1_size);
+
+				//std::cout << "Child 1 has been read " << std::endl;
+				//std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;	
+			}
+			
+
+			if(child2_size > 0){
+			    if(children[2] != NULL) 
+					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::assign_from_buffer(): non-null child exist!");
+					
+				char child2_buf[child2_size];
+				memcpy(&child2_buf[0], p, child2_size);
+				p += child2_size;	
+				n_bytes_left_to_read -= child2_size;
+
+				children[2] = new HierarchicalBlockSparseMatrix<Treal>();
+				children[2]->assign_from_buffer(&child2_buf[0], child2_size);
+
+				//std::cout << "Child 2 has been read " << std::endl;
+				//std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;	
+			}
+			
+
+			if(child3_size > 0){
+				if(children[3] != NULL) 
+					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::assign_from_buffer(): non-null child exist!");
+					
+				char child3_buf[child3_size];
+				memcpy(&child3_buf[0], p, child3_size);
+				p += child3_size;	
+				n_bytes_left_to_read -= child3_size;
+
+				children[3] = new HierarchicalBlockSparseMatrix<Treal>();
+				children[3]->assign_from_buffer(&child3_buf[0], child3_size);
+
+				//std::cout << "Child 3 has been read " << std::endl;
+				//std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;	
+			}
+			
+			// at this point, if n_bytes_left_to_read is 0, then we are done, if not, then ot was a leaf matrix!
+			if(n_bytes_left_to_read == 0){
+				return;
+			}
+			else{
+				
+				//std::cout << "Leaf matrix read " << std::endl;
+				assert(n_bytes_left_to_read == nRows * nCols * sizeof(Treal));
+				
+				submatrix.resize(nRows * nCols);
+				memcpy(&submatrix[0], p, nRows * nCols * sizeof(Treal));
+				p += nRows * nCols * sizeof(Treal);
+				
+			}
+		
+		
+			
+			 
+			 
+			 
 		}
 			
 } /* end namespace hbsm */
