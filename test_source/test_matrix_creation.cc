@@ -32,8 +32,17 @@ int main() {
   
   A->set_params(params);
   
-  A->resize(25,15);
+  std::cout << "before resize " << A->get_size() << std::endl;
+  std::cout << "sizeof(HierarchicalBlockSparseMatrix<Treal>*) is " << sizeof(hbsm::HierarchicalBlockSparseMatrix<real>*) << std::endl;
+  std::cout << "sizeof(int) is " << sizeof(int) << std::endl; 
+  std::cout << "sizeof(real) is " << sizeof(real) << std::endl; 
   
+  
+    
+  A->resize(4,4);
+  std::cout << " after resize: size of A is " << A->get_size() << std::endl;
+
+/*
   std::vector<int> rows, cols;
   std::vector<real> vals;
   
@@ -45,17 +54,27 @@ int main() {
   cols.push_back(1);
   vals.push_back(1.0);
   
-  rows.push_back(7);
-  cols.push_back(7);
+  rows.push_back(3);
+  cols.push_back(0);
   vals.push_back(2.0);
-  
-  rows.push_back(14);
-  cols.push_back(14);
-  vals.push_back(-0.0);
+
   
   A->assign_from_vectors(rows,cols,vals);
-  std::cout << "|A|^2 = " << A->get_frob_squared() << std::endl; 
-  std::cout << "nnz in A = " << A->get_nnz() << std::endl; 
+  */
+  
+  std::cout << "size of A is " << A->get_size() << std::endl;
+
+  
+  
+  size_t size_of_A = A->get_size();
+  std::vector<char> buf(size_of_A);
+  A->write_to_buffer(&buf[0],size_of_A);
+  
+  
+  hbsm::HierarchicalBlockSparseMatrix<real> B;
+  B.assign_from_buffer(&buf[0],size_of_A);
+  
+  std::cout << "B has size " << B.get_size() << std::endl;
   
   delete A;
   

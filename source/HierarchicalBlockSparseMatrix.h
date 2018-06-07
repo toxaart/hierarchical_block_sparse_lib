@@ -12,6 +12,7 @@
 #define HBSM_HIERARCHICAL_BLOCK_SPARSE_MATRIX_HEADER
 #include <vector>
 #include <list>
+#include <iterator>
 //#include <forward_list>
 #include <stdexcept>
 #include <cstring>
@@ -56,6 +57,8 @@ namespace hbsm {
 			bool lowest_level() const {
 				return (nRows == blocksize) && (nCols == blocksize) && !children_exist();
 			}
+			
+			Treal get_single_value(int row, int col) const;
 						
 	public:
 			struct Params {
@@ -91,20 +94,30 @@ namespace hbsm {
 				     const std::vector<int> & cols,
 				     const std::vector<Treal> & values,
 				     bool useMax,
-					 bool boundaries_checked);
-					 
+					 bool boundaries_checked);					 
 			void assign_from_vectors(const std::vector<int> & rows,
 				     const std::vector<int> & cols,
 				     const std::vector<Treal> & values);
-
 			void assign_from_vectors_max(const std::vector<int> & rows,
 				     const std::vector<int> & cols,
 				     const std::vector<Treal> & values,
-					 bool use_max);		
-
+					 bool use_max);	
 			Treal get_frob_squared() const;
-			
 			int get_nnz() const;
+			void get_all_values(std::vector<int> & rows,
+						  std::vector<int> & cols,
+						  std::vector<Treal> & values) const;
+						  
+			// get values with indices kept in vectors rows and cols			  
+			void get_values(const std::vector<int> & rows, 
+						  const std::vector<int> & cols,
+						  std::vector<Treal> & values) const;
+						  
+			size_t get_size() const;	
+
+			void write_to_buffer ( char * dataBuffer, size_t const bufferSize ) const;	
+			void assign_from_buffer ( char * dataBuffer, size_t const bufferSize );		  
+			
     };
 	
 	
@@ -134,6 +147,57 @@ namespace hbsm {
 			p.blocksize = blocksize;
 			return p;
 		}
+		
+	template<class Treal> 
+		Treal HierarchicalBlockSparseMatrix<Treal>::get_single_value(int row, int col) const {
+			
+			
+			if ( empty() )
+			  throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_single_value: empty matrix occured.");
+		
+		
+			if(!(0 <= row && row < nRows_orig && 0 <= col && col < nCols_orig ))
+			  throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_single_value: bad index at highest level.");
+			
+				
+		
+		
+			if(!(0 <= row && row < nRows && 0 <= col && col < nCols ) ){
+				throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_single_value: bad index.");
+			}
+			
+			if(lowest_level()){
+				return submatrix[col*nRows + row];
+			}
+			
+			
+			int offset = nRows/2;
+						
+			// this part goes to child0
+			if(row < offset && col < offset){
+				if(children[0] == NULL) return 0.0;
+				else return children[0]->get_single_value(row,col);
+			}
+			
+			// this part goes to child1
+			if(offset <= row && row < nRows && col < offset){
+				if(children[1] == NULL) return 0.0;
+				else return children[1]->get_single_value(row-offset,col);
+			}
+			
+			// this part goes to child2
+			if(row < offset && offset <= col && col < nCols){
+				if(children[2] == NULL) return 0.0;
+				else return children[2]->get_single_value(row,col-offset);
+			}
+			
+			// this part goes to child3
+			if(offset <= row && row < nRows && offset <= col && col < nCols){
+				if(children[3] == NULL) return 0.0;
+				else return children[3]->get_single_value(row-offset,col-offset);
+			}
+				
+		}	
 	
 	template<class Treal> 
 		void HierarchicalBlockSparseMatrix<Treal>::resize(int nRows_, int nCols_) {
@@ -141,14 +205,14 @@ namespace hbsm {
 		
 		submatrix.clear();
 		
-		nRows_orig = nRows_;
+		nRows_orig = nRows_; // this will be kept only on the top level, below that it is the same as nRows etc
 		nCols_orig = nCols_;
-		
+				
 		// lowest level	
-		if(nRows_ == blocksize && nCols_ == blocksize){
-			nRows = nRows_;
-			nCols = nCols_;
-			submatrix.resize(nRows*nCols);
+		if(nRows_ <= blocksize && nCols_ <= blocksize){
+			nRows = blocksize;
+			nCols = blocksize;
+			submatrix.resize(blocksize*blocksize);
 			return;
 		}
 	
@@ -210,13 +274,13 @@ namespace hbsm {
 			
 			assert(blocksize > 0);
 			if(rows.size() != values.size() || cols.size() != values.size())
-				throw std::runtime_error("Error in assign_from_vectors: bad sizes.");
+				throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors: bad sizes.");
 					
 			// this will be done only at the top level, later it is not necessary
 			if(!boundaries_checked){
 				for(int i = 0; i < values.size(); ++i){
 					if( rows[i] < 0 ||  rows[i] > nRows_orig-1 || cols[i] < 0 || cols[i] > nCols_orig - 1) 
-						throw std::runtime_error("Error in assign_from_vectors: index outside matrix boundaries.");
+						throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors: index outside matrix boundaries.");
 				}
 			}
 			
@@ -237,9 +301,9 @@ namespace hbsm {
 						submatrix[col * nRows + row] = (val > submatrix[col * nRows + row]) ? val : submatrix[col * nRows + row];
 					}
 					else{
-						submatrix[col * nRows + row] = val;
+						submatrix[col * nRows + row] += val; /* Note: we use += here, so if an element appears several times, the result becomes the sum of those contributions. */
 					}
-					std::cout << "Value added at lowest level" << std::endl;
+
 				}
 				
 				
@@ -247,9 +311,12 @@ namespace hbsm {
 			}
 			
 			// now we have to split arrays into 4 parts and recursively apply the same procedure on children
-			std::vector<int> cols0,cols1,cols2,cols3;
-			std::vector<int> rows0,rows1,rows2,rows3;
-			std::vector<Treal> vals0,vals1,vals2,vals3;
+			// use list instead of vectors, number of elements is not known in advance
+			
+			
+			std::list<int> rows0,rows1,rows2,rows3;
+			std::list<int> cols0,cols1,cols2,cols3;
+			std::list<Treal> vals0,vals1,vals2,vals3;
 			
 			// the offset, when providing parts of vectors to the next level their "coordinates" will be shifted
 			int offset = nRows/2;
@@ -292,42 +359,63 @@ namespace hbsm {
 
 			if(vals0.size() > 0){
 				if(children[0] != NULL){
-					throw std::runtime_error("Error in assign_from_vectors: non-null child0 matrix occured.");
+					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors: non-null child0 matrix occured.");
 				}
 				children[0] = new HierarchicalBlockSparseMatrix<Treal>();			
 			    children[0]->set_params(get_params());
 				children[0]->resize(nRows / 2, nCols / 2);
-				children[0]->assign_from_vectors_general(rows0, cols0, vals0, useMax,true);
+				
+				//convert from list to vectors using move iterator (C++11 only!)
+				std::vector<int> rows0_vect{ std::make_move_iterator(std::begin(rows0)), std::make_move_iterator(std::end(rows0)) };
+				std::vector<int> cols0_vect{ std::make_move_iterator(std::begin(cols0)), std::make_move_iterator(std::end(cols0)) };
+				std::vector<Treal> vals0_vect{ std::make_move_iterator(std::begin(vals0)), std::make_move_iterator(std::end(vals0)) };
+				
+				children[0]->assign_from_vectors_general(rows0_vect, cols0_vect, vals0_vect, useMax,true);
 			}
 			
 			if(vals1.size() > 0){
 				if(children[1] != NULL){
-					throw std::runtime_error("Error in assign_from_vectors: non-null child1 matrix occured.");
+					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors: non-null child1 matrix occured.");
 				}
 				children[1] = new HierarchicalBlockSparseMatrix<Treal>();			
 			    children[1]->set_params(get_params());
 				children[1]->resize(nRows / 2, nCols / 2);
-				children[1]->assign_from_vectors_general(rows1, cols1, vals1, useMax,true);
+				
+				std::vector<int> rows1_vect{ std::make_move_iterator(std::begin(rows1)), std::make_move_iterator(std::end(rows1)) };
+				std::vector<int> cols1_vect{ std::make_move_iterator(std::begin(cols1)), std::make_move_iterator(std::end(cols1)) };
+				std::vector<Treal> vals1_vect{ std::make_move_iterator(std::begin(vals1)), std::make_move_iterator(std::end(vals1)) };
+				
+				children[1]->assign_from_vectors_general(rows1_vect, cols1_vect, vals1_vect, useMax,true);
 			}
 			
 			if(vals2.size() > 0){
 				if(children[2] != NULL){
-					throw std::runtime_error("Error in assign_from_vectors: non-null child2 matrix occured.");
+					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors: non-null child2 matrix occured.");
 				}
 				children[2] = new HierarchicalBlockSparseMatrix<Treal>();			
 			    children[2]->set_params(get_params());
 				children[2]->resize(nRows / 2, nCols / 2);
-				children[2]->assign_from_vectors_general(rows2, cols2, vals2, useMax,true);
+				
+				std::vector<int> rows2_vect{ std::make_move_iterator(std::begin(rows2)), std::make_move_iterator(std::end(rows2)) };
+				std::vector<int> cols2_vect{ std::make_move_iterator(std::begin(cols2)), std::make_move_iterator(std::end(cols2)) };
+				std::vector<Treal> vals2_vect{ std::make_move_iterator(std::begin(vals2)), std::make_move_iterator(std::end(vals2)) };
+				
+				children[2]->assign_from_vectors_general(rows2_vect, cols2_vect, vals2_vect, useMax,true);
 			}
 			
 			if(vals3.size() > 0){
 				if(children[3] != NULL){
-					throw std::runtime_error("Error in assign_from_vectors: non-null child3 matrix occured.");
+					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors: non-null child3 matrix occured.");
 				}
 				children[3] = new HierarchicalBlockSparseMatrix<Treal>();			
 			    children[3]->set_params(get_params());
 				children[3]->resize(nRows / 2, nCols / 2);
-				children[3]->assign_from_vectors_general(rows3, cols3, vals3, useMax,true);
+				
+				std::vector<int> rows3_vect{ std::make_move_iterator(std::begin(rows3)), std::make_move_iterator(std::end(rows3)) };
+				std::vector<int> cols3_vect{ std::make_move_iterator(std::begin(cols3)), std::make_move_iterator(std::end(cols3)) };
+				std::vector<Treal> vals3_vect{ std::make_move_iterator(std::begin(vals3)), std::make_move_iterator(std::end(vals3)) };
+				
+				children[3]->assign_from_vectors_general(rows3_vect, cols3_vect, vals3_vect, useMax,true);
 			}		
 			
 		}
@@ -351,7 +439,7 @@ namespace hbsm {
 	template<class Treal> 
 		Treal HierarchicalBlockSparseMatrix<Treal>::get_frob_squared() const  {
 			if(empty()) 
-				throw std::runtime_error("Error in get_frob_squared: empty matrix occured.");
+				throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_frob_squared: empty matrix occured.");
 			
 		    if(lowest_level()){
 				
@@ -381,7 +469,7 @@ namespace hbsm {
 	template<class Treal> 
 		int HierarchicalBlockSparseMatrix<Treal>::get_nnz() const  {
 			if(empty()) 
-				throw std::runtime_error("Error in get_nnz: empty matrix occured.");
+				throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_nnz: empty matrix occured.");
 			
 		    if(lowest_level()){
 				
@@ -407,7 +495,345 @@ namespace hbsm {
 			}
 			
 		}
+		
+	template<class Treal> 
+		void HierarchicalBlockSparseMatrix<Treal>::get_all_values(std::vector<int> & rows,
+						  std::vector<int> & cols,
+						  std::vector<Treal> & values) const  {
+			
+							  
+			rows.clear();
+			cols.clear();
+			values.clear();			
+
+			std::list<int> rows_list, cols_list;
+			std::list<Treal> values_list;			
+							  
+			if(empty()){;
+				return;
+			}				  
+							  
+			if(lowest_level()){
+				
+				assert(submatrix.size() == nRows * nCols);
+				
+				for(int i = 0; i < submatrix.size(); ++i){
+					if(fabs(submatrix[i]) > 0.0){
+						
+						int col = i / nRows;
+						int row = i % nRows;
+						rows_list.push_back(row);
+						cols_list.push_back(col);
+						values_list.push_back(submatrix[i]);
+						
+					}
+				}
+				
+				// move elements from list to vectors
+				std::move(rows_list.begin(), rows_list.end(), std::back_inserter(rows));
+				std::move(cols_list.begin(), cols_list.end(), std::back_inserter(cols));
+				std::move(values_list.begin(), values_list.end(), std::back_inserter(values));
+				
+				return;
+			}
+			
+			// here we have to merge vectors obtained from children, takin into account offset of indices
+			int offset = nRows/2;
+			
+			std::vector<int> rows0,rows1,rows2,rows3;
+			std::vector<int> cols0,cols1,cols2,cols3;
+			std::vector<Treal> vals0,vals1,vals2,vals3;
+			
+			
+			
+			if(children[0] != NULL){
+				children[0]->get_all_values(rows0,cols0,vals0);
+				assert(rows0.size() == cols0.size() && rows0.size() == vals0.size());
+				// child0 - no offset applied
+				for(int i = 0; i < rows0.size(); ++i){
+					rows_list.push_back(rows0[i]);
+					cols_list.push_back(cols0[i]);
+					values_list.push_back(vals0[i]);
+				}
+				
+			}
+			
+			if(children[1] != NULL){
+				children[1]->get_all_values(rows1,cols1,vals1);
+				assert(rows1.size() == cols1.size() && rows1.size() == vals1.size());
+				// child1 - offset applied to row number
+				for(int i = 0; i < rows1.size(); ++i){
+					rows_list.push_back(rows1[i]+offset);
+					cols_list.push_back(cols1[i]);
+					values_list.push_back(vals1[i]);
+				}
+				
+			}
+			
+			if(children[2] != NULL){
+				children[2]->get_all_values(rows2,cols2,vals2);
+				assert(rows2.size() == cols2.size() && rows2.size() == vals2.size());
+				// child2 - offset applied to col number
+				for(int i = 0; i < rows2.size(); ++i){
+					rows_list.push_back(rows2[i]);
+					cols_list.push_back(cols2[i]+offset);
+					values_list.push_back(vals2[i]);
+				}
+				
+			}
+			
+			
+			if(children[3] != NULL){
+				children[3]->get_all_values(rows3,cols3,vals3);
+				assert(rows3.size() == cols3.size() && rows3.size() == vals3.size());
+				// child3 - offset applied to both col and row number
+				for(int i = 0; i < rows3.size(); ++i){
+					rows_list.push_back(rows3[i]+offset);
+					cols_list.push_back(cols3[i]+offset);
+					values_list.push_back(vals3[i]);
+				}
+				
+			}
+			
+			// move elements from list to vectors, placeholders will be destroyed automatically when leaving the function
+			std::move(rows_list.begin(), rows_list.end(), std::back_inserter(rows));
+			std::move(cols_list.begin(), cols_list.end(), std::back_inserter(cols));
+			std::move(values_list.begin(), values_list.end(), std::back_inserter(values));
+			
+		}
   
+  
+  	template<class Treal> 
+		void HierarchicalBlockSparseMatrix<Treal>::get_values(const std::vector<int> & rows,
+						  const std::vector<int> & cols,
+						  std::vector<Treal> & values) const  {
+			
+			if(empty()){
+				throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_values: empty matrix occured.");
+			}						  
+							  
+			if(rows.size() != cols.size()){
+				throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_values: bad sizes.");
+			}		
+
+			if(rows.size() == 0) return;
+			
+			values.resize(rows.size());
+							
+			for(int i = 0; i < rows.size(); ++i){
+				values[i] = get_single_value(rows[i],cols[i]);
+			}
+		}
+		
+	template<class Treal> 
+		size_t HierarchicalBlockSparseMatrix<Treal>::get_size() const  {
+			if(empty()) return 5 * sizeof(int);
+			
+			if(lowest_level()){				
+				return 5 * sizeof(int) + submatrix.size() * sizeof(Treal);				
+			}
+		
+			size_t totalsize = 5 * sizeof(int);
+		
+			if(children[0] != NULL){;
+				totalsize += children[0]->get_size();
+			}
+			if(children[1] != NULL) {
+				totalsize += children[1]->get_size();
+			}
+			if(children[2] != NULL){
+				totalsize += children[2]->get_size();
+			}
+			if(children[3] != NULL){{
+				totalsize += children[3]->get_size();
+			}
+			
+					
+			return totalsize;
+			
+		}
+	}
+		
+	template<class Treal> 
+		void HierarchicalBlockSparseMatrix<Treal>::write_to_buffer(char * dataBuffer, size_t const bufferSize) const  {
+			if(bufferSize < get_size())
+				throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::write_to_buffer(): buffer too small.");
+				
+			size_t size_of_matrix_pointer = sizeof(HierarchicalBlockSparseMatrix<Treal>*);
+				
+			//first write structural info about current level, then ALL info about every child in their natural order from 0 to 3
+			char* p = dataBuffer;
+			
+			if(empty()){
+			
+				memcpy(p, &nRows, sizeof(int));
+				p += sizeof(int);
+				
+				memcpy(p, &nCols, sizeof(int));
+				p += sizeof(int);
+				
+				memcpy(p, &nRows_orig, sizeof(int));
+				p += sizeof(int);
+				
+				memcpy(p, &nCols_orig, sizeof(int));
+				p += sizeof(int);
+				
+				memcpy(p, &blocksize, sizeof(int));
+				p += sizeof(int);
+		
+				return;
+			}
+			
+		
+			if(lowest_level()){
+				
+				memcpy(p, &nRows, sizeof(int));
+				p += sizeof(int);
+				
+				memcpy(p, &nCols, sizeof(int));
+				p += sizeof(int);
+				
+				memcpy(p, &nRows_orig, sizeof(int));
+				p += sizeof(int);
+				
+				memcpy(p, &nCols_orig, sizeof(int));
+				p += sizeof(int);
+				
+				memcpy(p, &blocksize, sizeof(int));
+				p += sizeof(int);
+											
+				memcpy(p, &submatrix[0], submatrix.size() * sizeof(Treal));
+				p += submatrix.size() * sizeof(Treal);
+				
+				return;
+			}
+			
+			size_t size_child0 = 0, size_child1 = 0, size_child2 = 0, size_child3 = 0;
+			std::vector<char> buf_child0, buf_child1, buf_child2, buf_child3;
+			
+			if(children[0] != NULL){
+				size_child0 = children[0]->get_size();
+				buf_child0.resize(size_child0);
+				children[0]->write_to_buffer(&buf_child0[0],size_child0);
+			}
+			
+			if(children[1] != NULL){
+				size_child1 = children[1]->get_size();
+				buf_child1.resize(size_child1);
+				children[1]->write_to_buffer(&buf_child1[0],size_child1);
+			}
+			
+			if(children[2] != NULL){
+				size_child2 = children[2]->get_size();
+				buf_child2.resize(size_child2);
+				children[2]->write_to_buffer(&buf_child2[0],size_child2);
+			}
+			
+			if(children[3] != NULL){
+				size_child3 = children[3]->get_size();
+				buf_child3.resize(size_child3);
+				children[3]->write_to_buffer(&buf_child3[0],size_child3);
+			}
+
+			
+			memcpy(p, &nRows, sizeof(int));
+			p += sizeof(int);
+				
+			memcpy(p, &nCols, sizeof(int));
+			p += sizeof(int);
+				
+			memcpy(p, &nRows_orig, sizeof(int));
+			p += sizeof(int);
+				
+			memcpy(p, &nCols_orig, sizeof(int));
+			p += sizeof(int);
+			
+			memcpy(p, &blocksize, sizeof(int));
+			p += sizeof(int);
+			
+			if(size_child0 > 0){
+				memcpy(p, &buf_child0[0],  size_child0);
+				p += size_child0;
+			}
+			
+			if(size_child1 > 0){
+				memcpy(p, &buf_child1[0],  size_child1);
+				p += size_child1;
+			}
+			
+			if(size_child2 > 0){
+				memcpy(p, &buf_child2[0],  size_child2);
+				p += size_child2;
+			}
+			
+			if(size_child3 > 0){
+				memcpy(p, &buf_child3[0],  size_child3);
+				p += size_child3;
+			}
+			
+		}
+		
+		
+	template<class Treal> 
+		void HierarchicalBlockSparseMatrix<Treal>::assign_from_buffer(char * dataBuffer, size_t const bufferSize) {
+			
+			const char *p = dataBuffer;
+			
+			int n_bytes_left_to_read = bufferSize;
+			
+			if (bufferSize < 5 * sizeof(int))
+			  throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::assign_from_buffer(): buffer too small.");
+			
+
+			memcpy(&nRows, p, sizeof(int));
+			p += sizeof(int);
+			n_bytes_left_to_read -= sizeof(int);
+
+			memcpy(&nCols, p, sizeof(int));
+			p += sizeof(int);
+			n_bytes_left_to_read -= sizeof(int);
+
+			memcpy(&nRows_orig, p, sizeof(int));
+			p += sizeof(int);
+			n_bytes_left_to_read -= sizeof(int);
+
+			memcpy(&nCols_orig, p, sizeof(int));
+			p += sizeof(int);
+			n_bytes_left_to_read -= sizeof(int);			
+
+			memcpy(&blocksize, p, sizeof(int));
+			p += sizeof(int);	
+			n_bytes_left_to_read -= sizeof(int);		
+
+			std::cout << "n_bytes_left_to_read = " << n_bytes_left_to_read << std::endl;
+		
+			this->resize(nRows, nCols);
+
+			
+			//check if buffer ended, if so, that was an empty matrix
+			if(n_bytes_left_to_read == 0){
+				std::cout << "That was an empty matrix" << std::endl;
+				return;
+			}
+			
+			// ok, at this point it is for sure not an empty matrix, copy elements
+			submatrix.resize(blocksize*blocksize);
+			memcpy(&submatrix[0], p, nRows * nCols * sizeof(Treal));
+		    p += nRows * nCols * sizeof(Treal);
+			n_bytes_left_to_read -= nRows * nCols * sizeof(Treal);
+			
+			//check if buffer ended, that is a leaf matrix
+			if(n_bytes_left_to_read == 0){
+				std::cout << "That was a leaf matrix" << std::endl;
+				return;
+			}
+			
+			// at this point we are sure that this matrix is higher than leaf, thus has children
+			// here it is not clear how to read children, we do not know their sizes and their number!
+			
+			//probably it is a good idea to code the number of children and their sizes
+		}
+			
 } /* end namespace hbsm */
 
 #endif
