@@ -13,73 +13,92 @@
 #include "hierarchical_block_sparse_lib.h"
 #include "test_utils.h"
 
-
+template<typename MatrixType>
 static int test_creation() {
+	typename MatrixType::Params param;
+#if 1  
+	param.blocksize = 1; // Only for block sparse matrix
+#endif
 
+	MatrixType M;
+	
+	M.set_params(param);
+	
+	if(!M.empty())
+		throw std::runtime_error("Error: M.empty() gave wrong result.");
 
-  return 0;
+	M.resize(3, 7);
+	
+	if(M.empty())
+		throw std::runtime_error("Error: M.empty() gave wrong result.");
+
+	M.clear();
+	if(!M.empty())
+		throw std::runtime_error("Error: M.empty() gave wrong result.");
+
+	M.resize(3, 7);
+	if(M.get_frob_squared() != 0)
+		throw std::runtime_error("Error: M.get_frob_squared() != 0 for newly created matrix.");
+
+	double refValue1 = 7.7;
+    double refValue2 = 1.1;
+
+	  // Test assign_from_vectors()
+	{
+		int nValues = 2;
+		std::vector<int> rows(nValues);
+		std::vector<int> cols(nValues);
+		std::vector<double> values(nValues);
+		rows  [0] = 2;
+		cols  [0] = 6;
+		values[0] = refValue1;
+		rows  [1] = 1;
+		cols  [1] = 3;
+		values[1] = refValue2;
+		M.assign_from_vectors(rows, cols, values);
+		double expected_frob_sq = refValue1*refValue1 + refValue2*refValue2;
+		
+		if(fabs(M.get_frob_squared() - expected_frob_sq) > 1e-7)
+			throw std::runtime_error("Error: M.get_frob_squared() gave wrong result.");
+	}
+
+	  // Test get_values()
+	{
+		int nValues2 = 3;
+		std::vector<int> rows(nValues2);
+		std::vector<int> cols(nValues2);
+		rows  [0] = 2;
+		cols  [0] = 6;
+		rows  [1] = 1;
+		cols  [1] = 3;
+		rows  [2] = 0;
+		cols  [2] = 5;
+		std::vector<double> values;
+		
+		M.get_values(rows, cols, values);
+		
+		if(std::fabs(values[0] - refValue1) > 1e-7)
+			throw std::runtime_error("Error: wrong result from get_values().");
+		
+		if(std::fabs(values[1] - refValue2) > 1e-7)
+			throw std::runtime_error("Error: wrong result from get_values().");
+		
+		if(std::fabs(values[2] - 0) > 1e-7)
+			throw std::runtime_error("Error: wrong result from get_values().");
+	}
+	
+	// Test write_to_buffer()
+	size_t size = M.get_size();
+	std::vector<char> buf(size);
+	M.write_to_buffer(&buf[0], size);
+
+	return 0;
 }
 
 
 int main() {  
+
+	return test_creation<hbsm::HierarchicalBlockSparseMatrix<double> >();
+  
 	
-  typedef double real;	
-  
-  hbsm::HierarchicalBlockSparseMatrix<real> *A = new hbsm::HierarchicalBlockSparseMatrix<real>();	
-  
-  hbsm::HierarchicalBlockSparseMatrix<real>::Params params;
-  params.blocksize = 4;
-  
-  A->set_params(params);
-  
-  std::cout << "before resize " << A->get_size() << std::endl;
-  std::cout << "sizeof(HierarchicalBlockSparseMatrix<Treal>*) is " << sizeof(hbsm::HierarchicalBlockSparseMatrix<real>*) << std::endl;
-  std::cout << "sizeof(int) is " << sizeof(int) << std::endl; 
-  std::cout << "sizeof(real) is " << sizeof(real) << std::endl; 
-  std::cout << "sizeof(size_t) is " << sizeof(size_t) << std::endl;
-  
-  
-    
-  A->resize(4,4);
-  std::cout << " after resize: size of A is " << A->get_size() << std::endl;
-
-/*
-  std::vector<int> rows, cols;
-  std::vector<real> vals;
-  
-  rows.push_back(0);
-  cols.push_back(0);
-  vals.push_back(1.0);
-  
-  rows.push_back(1);
-  cols.push_back(1);
-  vals.push_back(1.0);
-  
-  rows.push_back(3);
-  cols.push_back(0);
-  vals.push_back(2.0);
-
-  
-  A->assign_from_vectors(rows,cols,vals);
-  */
-  
-  std::cout << "size of A is " << A->get_size() << std::endl;
-
-  
-  
-  size_t size_of_A = A->get_size();
-  std::vector<char> buf(size_of_A);
-  A->write_to_buffer(&buf[0],size_of_A);
-  
-  
-  hbsm::HierarchicalBlockSparseMatrix<real> B;
-  B.assign_from_buffer(&buf[0],size_of_A);
-  
-  std::cout << "B has size " << B.get_size() << std::endl;
-  
-  delete A;
-  
- 
-	
-  return 0;
 }
