@@ -627,32 +627,51 @@ namespace hbsm {
 		
 	template<class Treal> 
 		size_t HierarchicalBlockSparseMatrix<Treal>::get_size() const  {
-			if(empty()) return 5 * sizeof(int);
+			if(empty()) return 5 * sizeof(int) + 4 * sizeof(size_t);
 			
 			if(lowest_level()){				
-				return 5 * sizeof(int) + submatrix.size() * sizeof(Treal);				
+				return 5 * sizeof(int) + 4 * sizeof(size_t) + submatrix.size() * sizeof(Treal);				
 			}
 		
 			size_t totalsize = 5 * sizeof(int);
 		
-			if(children[0] != NULL){;
-				totalsize += children[0]->get_size();
+			// every child writes its own size even if it is zero
+			if(children[0] != NULL){
+				totalsize += sizeof(size_t) + children[0]->get_size();
 			}
+			else{
+				totalsize += sizeof(size_t);
+			}
+			
 			if(children[1] != NULL) {
-				totalsize += children[1]->get_size();
+				totalsize += sizeof(size_t) + children[1]->get_size();
 			}
+			else{
+				totalsize += sizeof(size_t);
+			}
+			
 			if(children[2] != NULL){
-				totalsize += children[2]->get_size();
+				totalsize += sizeof(size_t) + children[2]->get_size();
 			}
-			if(children[3] != NULL){{
-				totalsize += children[3]->get_size();
+			else{
+				totalsize += sizeof(size_t);
 			}
+			
+			if(children[3] != NULL){
+				totalsize += sizeof(size_t) + children[3]->get_size();
+			}
+			else{
+				totalsize += sizeof(size_t);
+			}
+			
+			
+
 			
 					
 			return totalsize;
 			
 		}
-	}
+	
 		
 	template<class Treal> 
 		void HierarchicalBlockSparseMatrix<Treal>::write_to_buffer(char * dataBuffer, size_t const bufferSize) const  {
@@ -661,7 +680,6 @@ namespace hbsm {
 				
 			size_t size_of_matrix_pointer = sizeof(HierarchicalBlockSparseMatrix<Treal>*);
 				
-			//first write structural info about current level, then ALL info about every child in their natural order from 0 to 3
 			char* p = dataBuffer;
 			
 			if(empty()){
@@ -680,6 +698,20 @@ namespace hbsm {
 				
 				memcpy(p, &blocksize, sizeof(int));
 				p += sizeof(int);
+				
+				//no children - write 4 zeros!
+				size_t zero_size = 0;
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
+				
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
+				
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
+				
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
 		
 				return;
 			}
@@ -701,6 +733,20 @@ namespace hbsm {
 				
 				memcpy(p, &blocksize, sizeof(int));
 				p += sizeof(int);
+				
+				//no children - write 4 zeros!
+				size_t zero_size = 0;
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
+				
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
+				
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
+				
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
 											
 				memcpy(p, &submatrix[0], submatrix.size() * sizeof(Treal));
 				p += submatrix.size() * sizeof(Treal);
@@ -711,7 +757,7 @@ namespace hbsm {
 			size_t size_child0 = 0, size_child1 = 0, size_child2 = 0, size_child3 = 0;
 			std::vector<char> buf_child0, buf_child1, buf_child2, buf_child3;
 			
-			if(children[0] != NULL){
+			if(children[0] != NULL){ // if child do not exist, its size will be zero!
 				size_child0 = children[0]->get_size();
 				buf_child0.resize(size_child0);
 				children[0]->write_to_buffer(&buf_child0[0],size_child0);
@@ -751,24 +797,52 @@ namespace hbsm {
 			memcpy(p, &blocksize, sizeof(int));
 			p += sizeof(int);
 			
-			if(size_child0 > 0){
+			if(size_child0 > 0){ // if child size is > 0, write size and the child itself
+				memcpy(p, &size_child0, sizeof(size_t));
+				p += sizeof(size_t);
+			
 				memcpy(p, &buf_child0[0],  size_child0);
 				p += size_child0;
 			}
+			else{
+				memcpy(p, &size_child0, sizeof(size_t));
+				p += sizeof(size_t); // if zero, then only the size!
+			}
 			
 			if(size_child1 > 0){
+				memcpy(p, &size_child1, sizeof(size_t));
+				p += sizeof(size_t);
+				
 				memcpy(p, &buf_child1[0],  size_child1);
 				p += size_child1;
 			}
+			else{
+				memcpy(p, &size_child1, sizeof(size_t));
+				p += sizeof(size_t);
+			}
 			
 			if(size_child2 > 0){
+				memcpy(p, &size_child2, sizeof(size_t));
+				p += sizeof(size_t);
+				
 				memcpy(p, &buf_child2[0],  size_child2);
 				p += size_child2;
 			}
+			else{
+				memcpy(p, &size_child2, sizeof(size_t));
+				p += sizeof(size_t);
+			}
 			
 			if(size_child3 > 0){
+				memcpy(p, &size_child3, sizeof(size_t));
+				p += sizeof(size_t);
+				
 				memcpy(p, &buf_child3[0],  size_child3);
 				p += size_child3;
+			}
+			else{
+				memcpy(p, &size_child3, sizeof(size_t));
+				p += sizeof(size_t);
 			}
 			
 		}
@@ -804,34 +878,28 @@ namespace hbsm {
 			memcpy(&blocksize, p, sizeof(int));
 			p += sizeof(int);	
 			n_bytes_left_to_read -= sizeof(int);		
-
-			std::cout << "n_bytes_left_to_read = " << n_bytes_left_to_read << std::endl;
 		
 			this->resize(nRows, nCols);
 
-			
 			//check if buffer ended, if so, that was an empty matrix
 			if(n_bytes_left_to_read == 0){
 				std::cout << "That was an empty matrix" << std::endl;
 				return;
 			}
+		
+			std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;
 			
-			// ok, at this point it is for sure not an empty matrix, copy elements
-			submatrix.resize(blocksize*blocksize);
-			memcpy(&submatrix[0], p, nRows * nCols * sizeof(Treal));
-		    p += nRows * nCols * sizeof(Treal);
-			n_bytes_left_to_read -= nRows * nCols * sizeof(Treal);
-			
-			//check if buffer ended, that is a leaf matrix
-			if(n_bytes_left_to_read == 0){
-				std::cout << "That was a leaf matrix" << std::endl;
-				return;
-			}
-			
-			// at this point we are sure that this matrix is higher than leaf, thus has children
-			// here it is not clear how to read children, we do not know their sizes and their number!
-			
-			//probably it is a good idea to code the number of children and their sizes
+			size_t size_child0, size_child1, size_child2, size_child3;
+			memcpy(&size_child0, p, sizeof(size_t));
+			p += sizeof(size_t);
+			n_bytes_left_to_read -= sizeof(size_t);
+
+			std::cout << "child0 has size " << size_child0 << std::endl;
+		
+			/*
+			 * Idea: format is as follows: nRows nCols nRows_orig nCols_orig blocksize child0_size CHILD0 child1_size CHILD1 child2_size CHILD2 child3_size CHILD3 sizeof(submatrix) elements
+			 * this should allow to write recursive structure to buffer with any configuration
+			 * */
 		}
 			
 } /* end namespace hbsm */

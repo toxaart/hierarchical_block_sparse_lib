@@ -36,6 +36,7 @@ int main() {
   std::cout << "sizeof(HierarchicalBlockSparseMatrix<Treal>*) is " << sizeof(hbsm::HierarchicalBlockSparseMatrix<real>*) << std::endl;
   std::cout << "sizeof(int) is " << sizeof(int) << std::endl; 
   std::cout << "sizeof(real) is " << sizeof(real) << std::endl; 
+  std::cout << "sizeof(size_t) is " << sizeof(size_t) << std::endl;
   
   
     
