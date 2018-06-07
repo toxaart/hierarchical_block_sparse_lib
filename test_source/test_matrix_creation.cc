@@ -51,9 +51,11 @@ int main() {
   
   rows.push_back(14);
   cols.push_back(14);
-  vals.push_back(2.0);
+  vals.push_back(-0.0);
   
-  A->assign_from_vectors_general(rows,cols,vals,false,false);
+  A->assign_from_vectors(rows,cols,vals);
+  std::cout << "|A|^2 = " << A->get_frob_squared() << std::endl; 
+  std::cout << "nnz in A = " << A->get_nnz() << std::endl; 
   
   delete A;
   

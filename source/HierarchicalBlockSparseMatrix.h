@@ -53,10 +53,6 @@ namespace hbsm {
 			
 			std::vector<real> submatrix; // actual data is here if lowest level, otherwise is empty.
 				
-			inline bool is_power_of_2(int n){
-				return n && !(n & (n - 1));
-			}
-			
 			bool lowest_level() const {
 				return (nRows == blocksize) && (nCols == blocksize) && !children_exist();
 			}
@@ -83,8 +79,8 @@ namespace hbsm {
 				submatrix.clear();
 			}
 
-			int get_n_rows() const { return nRows; }
-			int get_n_cols() const { return nCols; }
+			int get_n_rows() const { return nRows_orig; } // returns values for 'original' matrix, before it's been covered with blocksize and hierarchy was built
+			int get_n_cols() const { return nCols_orig; }
 			void set_params(Params const & param); 
 			Params get_params() const;
 			bool children_exist() const; 
@@ -96,6 +92,19 @@ namespace hbsm {
 				     const std::vector<Treal> & values,
 				     bool useMax,
 					 bool boundaries_checked);
+					 
+			void assign_from_vectors(const std::vector<int> & rows,
+				     const std::vector<int> & cols,
+				     const std::vector<Treal> & values);
+
+			void assign_from_vectors_max(const std::vector<int> & rows,
+				     const std::vector<int> & cols,
+				     const std::vector<Treal> & values,
+					 bool use_max);		
+
+			Treal get_frob_squared() const;
+			
+			int get_nnz() const;
     };
 	
 	
@@ -135,12 +144,11 @@ namespace hbsm {
 		nRows_orig = nRows_;
 		nCols_orig = nCols_;
 		
-		// lowest level
-		// FIXME is it the right way to check if lowest level reached?
+		// lowest level	
 		if(nRows_ == blocksize && nCols_ == blocksize){
 			nRows = nRows_;
 			nCols = nCols_;
-			submatrix.clear();
+			submatrix.resize(nRows*nCols);
 			return;
 		}
 	
@@ -164,13 +172,13 @@ namespace hbsm {
 		
 		int virtual_size = blocksize * two_to_power_P;
 		
-		
+		/*
 		std::cout << "maxdim / blocksize = " << maxdim / blocksize << std::endl;
 		std::cout << "maxdim % blocksize = " << maxdim % blocksize << std::endl;
 		std::cout << "n_covers = " << n_covers << std::endl;
 		std::cout << "P = " << P << std::endl;
 		std::cout << "virtual size is " << virtual_size << std::endl;
-		
+		*/
 		
 		nRows = virtual_size;
 		nCols = virtual_size;
@@ -214,8 +222,7 @@ namespace hbsm {
 			
 			if(lowest_level()){
 				// assume that the matrix has been properly resized already;
-				submatrix.clear();
-				submatrix.resize(nCols*nRows);
+				assert(submatrix.size() == nCols*nRows);
 				
 				for(int i = 0; i < nCols*nRows; ++i){
 					submatrix[i] = 0.0;
@@ -282,9 +289,7 @@ namespace hbsm {
 				}
 				
 			}
-			
-			
-			
+
 			if(vals0.size() > 0){
 				if(children[0] != NULL){
 					throw std::runtime_error("Error in assign_from_vectors: non-null child0 matrix occured.");
@@ -324,6 +329,82 @@ namespace hbsm {
 				children[3]->resize(nRows / 2, nCols / 2);
 				children[3]->assign_from_vectors_general(rows3, cols3, vals3, useMax,true);
 			}		
+			
+		}
+		
+		
+	template<class Treal> 
+		void HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors(const std::vector<int> & rows,
+				     const std::vector<int> & cols,
+				     const std::vector<Treal> & values) {
+			 return HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors_general(rows, cols, values, false, false);
+		}
+  
+  	template<class Treal> 
+		void HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors_max(const std::vector<int> & rows,
+				     const std::vector<int> & cols,
+				     const std::vector<Treal> & values,
+					 bool use_max) {
+			 return HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors_general(rows, cols, values, use_max, false);
+		}
+		
+	template<class Treal> 
+		Treal HierarchicalBlockSparseMatrix<Treal>::get_frob_squared() const  {
+			if(empty()) 
+				throw std::runtime_error("Error in get_frob_squared: empty matrix occured.");
+			
+		    if(lowest_level()){
+				
+				assert(submatrix.size() == nRows * nCols);
+				
+				Treal frob_norm_squared = 0.0;
+				
+				for(int i = 0; i < submatrix.size(); ++i){
+					frob_norm_squared += submatrix[i] * submatrix[i];
+				}
+				
+				return frob_norm_squared;
+			}
+			else{
+				
+				Treal frob_norm_squared = 0.0;
+				
+				for(int i = 0; i < 4; ++i){
+					if(children[i] != NULL) frob_norm_squared += children[i]->get_frob_squared();
+				}
+				
+				return frob_norm_squared;
+			}
+			
+		}
+		
+	template<class Treal> 
+		int HierarchicalBlockSparseMatrix<Treal>::get_nnz() const  {
+			if(empty()) 
+				throw std::runtime_error("Error in get_nnz: empty matrix occured.");
+			
+		    if(lowest_level()){
+				
+				assert(submatrix.size() == nRows * nCols);
+				
+				int nnz = 0;
+				
+				for(int i = 0; i < submatrix.size(); ++i){
+					if(fabs(submatrix[i]) > 0.0) nnz += 1; 
+				}
+				
+				return nnz;
+			}
+			else{
+				
+				int nnz = 0.0;
+				
+				for(int i = 0; i < 4; ++i){
+					if(children[i] != NULL) nnz += children[i]->get_nnz();
+				}
+				
+				return nnz;
+			}
 			
 		}
   
