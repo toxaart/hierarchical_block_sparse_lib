@@ -2,10 +2,10 @@ CC=g++
 BUILD_WITH_CUDA=0
 
 ifeq ($(BUILD_WITH_CUDA),1)
-CXXFLAGS=-O3 -m64 -I/usr/local/cuda/include -DBUILD_WITH_CUDA=$(BUILD_WITH_CUDA)
+CXXFLAGS=-O3 -m64 -I/usr/local/cuda/include -DBUILD_WITH_CUDA=$(BUILD_WITH_CUDA) -std=c++11
 LDFLAGS=-lcudart -lcublas 
 else
-CXXFLAGS=-O3
+CXXFLAGS=-O3 -std=c++11
 LDFLAGS= 
 endif
 
