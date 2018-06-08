@@ -29,7 +29,7 @@ static int test_creation() {
 	if(!M.empty())
 		throw std::runtime_error("Error: M.empty() gave wrong result.");
 
-	M.resize(4, 4);
+	M.resize(4, 4,4,4);
     
     if(M.get_n_rows() != 4 || M.get_n_cols() != 4 )
         throw std::runtime_error("Error: M.get_n_rows() or get_n_cols() gave wrong result.");
@@ -41,7 +41,7 @@ static int test_creation() {
 	if(!M.empty())
 		throw std::runtime_error("Error: M.empty() or clear() gave wrong result.");
 
-	M.resize(7, 16);
+	M.resize(7, 16,7,16);
     
     if(M.get_n_rows() != 7 || M.get_n_cols() != 16 )
         throw std::runtime_error("Error: M.get_n_rows() or get_n_cols() gave wrong result.");
@@ -51,7 +51,7 @@ static int test_creation() {
 		throw std::runtime_error("Error: M.get_frob_squared() != 0 for newly created matrix.");
 
     M.clear();
-    M.resize(32, 32);
+    M.resize(32, 32,32,32);
     
     if(M.get_n_rows() != 32|| M.get_n_cols() != 32 )
     throw std::runtime_error("Error: M.get_n_rows() or get_n_cols() gave wrong result.");
@@ -141,9 +141,39 @@ static int test_creation() {
     verify_that_matrices_are_equal<MatrixType>(M,C);
     verify_that_matrices_are_equal<MatrixType>(B,C);
     
-    C.clear();
-    M.clear();
-    B.clear();
+
+    //check add scaled identity
+    MatrixType D,E;
+    
+    E.set_params(param);
+    E.resize(14,14,14,14);
+    
+    std::vector<int> rows, cols;
+    std::vector<double> vals;
+    
+    rows.push_back(0);
+    cols.push_back(0);
+    vals.push_back(2.2);
+    
+    rows.push_back(13);
+    cols.push_back(13);
+    vals.push_back(-2.2);
+    
+    E.assign_from_vectors(rows,cols,vals);
+    //D.copy(E);
+    D.add_scaled_identity(E,0.5);
+    
+    rows.clear();
+    cols.clear();
+    vals.clear();
+    
+    D.get_all_values(rows,cols,vals);
+    //assert(rows.size() > 0);
+
+    for(int i = 0; i < rows.size(); ++i){
+        std::cout << rows[i] << " " << cols[i] << " " << vals[i] << std::endl;
+
+    }
 
 	return 0;
 }
