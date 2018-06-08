@@ -13,47 +13,6 @@
 #include "hierarchical_block_sparse_lib.h"
 #include "test_utils.h"
 
-template<typename MatrixType>
-void check_if_matrices_are_the_same(const MatrixType &A, const MatrixType &B){
-    
-    if(A.get_size() != B.get_size())
-        throw std::runtime_error("Error: wrong result from get_size().");
-        
-    if(A.get_nnz() != B.get_nnz())
-       throw std::runtime_error("Error: wrong result from get_nnz().") ;    
-    
-	if(A.get_frob_squared() != B.get_frob_squared())
-        throw std::runtime_error("Error: wrong result from get_frob_squared().");
-	
-    if(A.get_n_rows() != B.get_n_rows() || A.get_n_cols() != B.get_n_cols())
-        throw std::runtime_error("Error: wrong result from get_n_rows() or get_n_cols().");
-    
-	{
-		int nValues3 = A.get_n_rows() * A.get_n_cols();
-		std::vector<int> rows(nValues3);
-		std::vector<int> cols(nValues3);
-        int counter = 0;
-        for(int i = 0; i < A.get_n_rows(); ++i){
-            for(int j = 0; j < A.get_n_cols(); ++j){
-                rows[counter] = i;
-                cols[counter] = j;
-                counter += 1;
-            }
-        }
-		std::vector<double> values_A, values_B;
-	
-		A.get_values(rows, cols, values_A);
-		B.get_values(rows, cols, values_B);
-		
-		for(int i = 0; i < nValues3; ++i){
-			if(fabs(values_A[i] - values_B[i]) > 1e-12 )
-               throw std::runtime_error("Error: wrong result from get_values() after assignment from buffer.");
-		}
-	
-	}
-    
-}
-
 
 
 template<typename MatrixType>
@@ -64,7 +23,7 @@ static int test_creation() {
 #endif
 
 	MatrixType M;
-	
+
 	M.set_params(param);
 	
 	if(!M.empty())
@@ -173,13 +132,18 @@ static int test_creation() {
 	MatrixType B;
 	B.assign_from_buffer(&buf[0], size);
     
-    check_if_matrices_are_the_same<MatrixType>(M,B);
+    verify_that_matrices_are_equal<MatrixType>(M,B);
 
     MatrixType C;
     C.copy(M);
 
-    check_if_matrices_are_the_same<MatrixType>(M,C);
-    check_if_matrices_are_the_same<MatrixType>(B,C);
+    verify_that_matrices_are_equal<MatrixType>(M,C);
+    verify_that_matrices_are_equal<MatrixType>(M,C);
+    verify_that_matrices_are_equal<MatrixType>(B,C);
+    
+    C.clear();
+    M.clear();
+    B.clear();
 
 	return 0;
 }
@@ -189,5 +153,5 @@ int main() {
 
 	return test_creation<hbsm::HierarchicalBlockSparseMatrix<double> >();
   
-	
+
 }
