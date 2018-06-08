@@ -32,14 +32,14 @@ static int test_creation(int N, int blockSize, double nonzeroFraction, int nMat,
     M1.set_params(param);
     if(!M1.empty())
     throw std::runtime_error("Error: M.empty() gave wrong result.");
-    M1.resize(3, 7,3,7);
+    M1.resize(3, 7);
     
     if(M1.empty())
     throw std::runtime_error("Error: M.empty() gave wrong result.");
     M1.clear();
     if(!M1.empty())
     throw std::runtime_error("Error: M.empty() gave wrong result.");
-    M1.resize(3, 7,3,7);
+    M1.resize(3, 7);
 
     if(M1.get_frob_squared() != 0)
     throw std::runtime_error("Error: M.get_frob_squared() != 0 for newly created matrix.");
@@ -55,7 +55,7 @@ static int test_creation(int N, int blockSize, double nonzeroFraction, int nMat,
         
         M_vec_1[i] = new MatrixType();
         M_vec_1[i]->set_params(param);
-        M_vec_1[i]->resize(N, N,N,N);
+        M_vec_1[i]->resize(N, N);
         
         // Test assign_from_vectors()
         {
@@ -104,7 +104,7 @@ static int test_creation(int N, int blockSize, double nonzeroFraction, int nMat,
 
             M_vec_2[i] = new MatrixType();
             M_vec_2[i]->set_params(param);
-            M_vec_2[i]->resize(N, N,N,N);
+            M_vec_2[i]->resize(N, N);
 
               // Test assign_from_vectors()
             {

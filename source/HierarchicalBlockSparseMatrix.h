@@ -46,6 +46,7 @@ namespace hbsm {
 			int nCols_orig; // before 'virtual size' has been computed
 			int blocksize; // size of blocks at the lowest level (blocksize x blocksize)
 			HierarchicalBlockSparseMatrix<real>* children[4]; // array of pointers to the next level.
+			HierarchicalBlockSparseMatrix<real>* parent; // way to go to top level;
 			/*		child0 | child2
 			 * 		--------------		
 			 *      child1 | child3
@@ -59,6 +60,8 @@ namespace hbsm {
 			}
 			
 			Treal get_single_value(int row, int col) const;
+			
+			int get_level() const; // computes the distance in the hierarchy from top level to current. 
 						
 	public:
 			struct Params {
@@ -70,6 +73,7 @@ namespace hbsm {
 				children[1] = NULL;
 				children[2] = NULL;
 				children[3] = NULL;
+				parent = NULL;
 				submatrix.clear();
 			}
 			
@@ -82,13 +86,14 @@ namespace hbsm {
 				submatrix.clear();
 			}
 
-			int get_n_rows() const { return nRows_orig; }
-			int get_n_cols() const { return nCols_orig; }
+			
+			int get_n_rows() const; //returns n_rows in ORIGINAL matrix, can be called from any level still gives results for original matrix
+			int get_n_cols() const; //returns n_cols in ORIGINAL matrix, can be called from any level still gives results for original matrix
 			void set_params(Params const & param); 
 			Params get_params() const;
 			bool children_exist() const; 
 			bool empty() const;
-			void resize(int nRows_, int nCols_, int nRows_orig_, int nCols_orig_);
+			void resize(int nRows_, int nCols_);
 			void clear();
 			void assign_from_vectors_general(const std::vector<int> & rows,
 				     const std::vector<int> & cols,
@@ -123,6 +128,52 @@ namespace hbsm {
             
     };
 	
+	template<class Treal> 
+		int HierarchicalBlockSparseMatrix<Treal>::get_n_rows() const  {
+			if(parent == NULL)
+				return nRows_orig;
+			else{
+				HierarchicalBlockSparseMatrix<Treal> *tmp = parent;
+				int counter = 0;
+				while(tmp != NULL){
+					tmp = tmp->parent;
+				}				
+				return tmp->nRows_orig;
+			}					
+		}
+		
+	template<class Treal> 
+		int HierarchicalBlockSparseMatrix<Treal>::get_n_cols() const  {
+			if(parent == NULL)
+				return nCols_orig;
+			else{				
+				HierarchicalBlockSparseMatrix<Treal> *tmp = parent;
+				while(tmp != NULL){
+					tmp = tmp->parent;
+				}				
+				return tmp->nCols_orig;
+			}					
+		}	
+		
+	template<class Treal> 
+		int HierarchicalBlockSparseMatrix<Treal>::get_level() const  {
+			if(parent == NULL)
+				return 0;
+			else{
+				
+				HierarchicalBlockSparseMatrix<Treal> *tmp = parent;
+				int counter = 0;
+				
+				while(tmp != NULL){
+					tmp = tmp->parent;
+					counter++;
+				}
+				
+				return counter;
+				
+			}	
+				
+		}	
 	
 	template<class Treal> 
 		bool HierarchicalBlockSparseMatrix<Treal>::children_exist() const  {
@@ -203,13 +254,13 @@ namespace hbsm {
 		}	
 	
 	template<class Treal> 
-		void HierarchicalBlockSparseMatrix<Treal>::resize(int nRows_, int nCols_, int nRows_orig_, int nCols_orig_) {
+		void HierarchicalBlockSparseMatrix<Treal>::resize(int nRows_, int nCols_) {
 		assert(blocksize > 0);
 		
 		submatrix.clear();
 		
-		nRows_orig = nRows_orig_; 
-		nCols_orig = nCols_orig_;
+		nRows_orig = nRows_; // only top level contains true size, rest have duplicates of nRows and nCols
+		nCols_orig = nCols_;
 				
 		// lowest level	
 		if(nRows_ <= blocksize && nCols_ <= blocksize){
@@ -379,7 +430,8 @@ namespace hbsm {
 				}
 				children[0] = new HierarchicalBlockSparseMatrix<Treal>();			
 			    children[0]->set_params(get_params());
-				children[0]->resize(nRows / 2, nCols / 2, nRows_orig, nCols_orig);
+				children[0]->resize(nRows / 2, nCols / 2);
+				children[0]->parent = this;
 				
 				//convert from list to vectors using move iterator (C++11 only!)
 				std::vector<int> rows0_vect{ std::make_move_iterator(std::begin(rows0)), std::make_move_iterator(std::end(rows0)) };
@@ -395,7 +447,8 @@ namespace hbsm {
 				}
 				children[1] = new HierarchicalBlockSparseMatrix<Treal>();			
 			    children[1]->set_params(get_params());
-				children[1]->resize(nRows / 2, nCols / 2, nRows_orig, nCols_orig);
+				children[1]->resize(nRows / 2, nCols / 2);
+				children[1]->parent = this;
 				
 				std::vector<int> rows1_vect{ std::make_move_iterator(std::begin(rows1)), std::make_move_iterator(std::end(rows1)) };
 				std::vector<int> cols1_vect{ std::make_move_iterator(std::begin(cols1)), std::make_move_iterator(std::end(cols1)) };
@@ -410,7 +463,8 @@ namespace hbsm {
 				}
 				children[2] = new HierarchicalBlockSparseMatrix<Treal>();			
 			    children[2]->set_params(get_params());
-				children[2]->resize(nRows / 2, nCols / 2, nRows_orig, nCols_orig);
+				children[2]->resize(nRows / 2, nCols / 2);
+				children[2]->parent = this;
 				
 				std::vector<int> rows2_vect{ std::make_move_iterator(std::begin(rows2)), std::make_move_iterator(std::end(rows2)) };
 				std::vector<int> cols2_vect{ std::make_move_iterator(std::begin(cols2)), std::make_move_iterator(std::end(cols2)) };
@@ -425,7 +479,8 @@ namespace hbsm {
 				}
 				children[3] = new HierarchicalBlockSparseMatrix<Treal>();			
 			    children[3]->set_params(get_params());
-				children[3]->resize(nRows / 2, nCols / 2, nRows_orig, nCols_orig);
+				children[3]->resize(nRows / 2, nCols / 2);
+				children[3]->parent = this;
 				
 				std::vector<int> rows3_vect{ std::make_move_iterator(std::begin(rows3)), std::make_move_iterator(std::end(rows3)) };
 				std::vector<int> cols3_vect{ std::make_move_iterator(std::begin(cols3)), std::make_move_iterator(std::end(cols3)) };
@@ -804,11 +859,11 @@ namespace hbsm {
 			}
 
 			
-			memcpy(p, &nRows, sizeof(int));
+	        memcpy(p, &nRows, sizeof(int));
 			p += sizeof(int);
 				
 			memcpy(p, &nCols, sizeof(int));
-			p += sizeof(int);
+			p += sizeof(int);	
 				
 			memcpy(p, &nRows_orig, sizeof(int));
 			p += sizeof(int);
@@ -881,7 +936,7 @@ namespace hbsm {
 
 			memcpy(&nCols_orig, p, sizeof(int));
 			p += sizeof(int);
-			n_bytes_left_to_read -= sizeof(int);			
+			n_bytes_left_to_read -= sizeof(int);		
 
 			memcpy(&blocksize, p, sizeof(int));
 			p += sizeof(int);	
@@ -905,7 +960,7 @@ namespace hbsm {
 			p += sizeof(size_t);	
 			n_bytes_left_to_read -= sizeof(size_t);	
 		
-			this->resize(nRows, nCols, nRows_orig, nCols_orig);
+			this->resize(nRows_orig, nCols_orig);
 
 			//check if buffer ended, if so, that was an empty matrix
 			if(n_bytes_left_to_read == 0){
@@ -928,6 +983,7 @@ namespace hbsm {
 
 				children[0] = new HierarchicalBlockSparseMatrix<Treal>();
 				children[0]->assign_from_buffer(&child0_buf[0], child0_size);
+				children[0]->parent = this;
 
 				//std::cout << "Child 0 has been read " << std::endl;
 				//std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;	
@@ -944,6 +1000,7 @@ namespace hbsm {
 
 				children[1] = new HierarchicalBlockSparseMatrix<Treal>();
 				children[1]->assign_from_buffer(&child1_buf[0], child1_size);
+				children[1]->parent = this;
 
 				//std::cout << "Child 1 has been read " << std::endl;
 				//std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;	
@@ -961,6 +1018,7 @@ namespace hbsm {
 
 				children[2] = new HierarchicalBlockSparseMatrix<Treal>();
 				children[2]->assign_from_buffer(&child2_buf[0], child2_size);
+				children[2]->parent = this;
 
 				//std::cout << "Child 2 has been read " << std::endl;
 				//std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;	
@@ -978,6 +1036,7 @@ namespace hbsm {
 
 				children[3] = new HierarchicalBlockSparseMatrix<Treal>();
 				children[3]->assign_from_buffer(&child3_buf[0], child3_size);
+				children[3]->parent = this;
 
 				//std::cout << "Child 3 has been read " << std::endl;
 				//std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;	
@@ -1015,7 +1074,7 @@ namespace hbsm {
                 
                 this->set_params(other.get_params());
                 
-                this->resize(other.nRows,other.nCols, other.nRows_orig, other.nCols_orig);
+                this->resize(other.nRows,other.nCols);
                 
                 assert(submatrix.size() == nRows * nCols);
                 
@@ -1025,7 +1084,8 @@ namespace hbsm {
             }
             
             this->set_params(other.get_params());
-            this->resize(other.nRows,other.nCols, other.nRows_orig, other.nCols_orig);
+            if(get_level() == 0) this->resize(other.nRows_orig,other.nCols_orig);
+			else this->resize(other.nRows,other.nCols);
             
     
             
@@ -1036,6 +1096,7 @@ namespace hbsm {
                 if(other.children[i] != NULL){
                     children[i] = new HierarchicalBlockSparseMatrix<Treal>();
                     children[i]->copy(*other.children[i]);
+					children[i]->parent = this;
                 }
                 
 
@@ -1057,12 +1118,10 @@ namespace hbsm {
     
             this->set_params(other.get_params());
                 
-            this->resize(other.nRows,other.nCols, other.nRows_orig, other.nCols_orig);
+            this->resize(other.nRows,other.nCols);
             
            
             if(other.lowest_level()){
-                
-                std::cout << "add_scaled_identity lowest level: sizes " << nRows << " " << nCols << " " <<  nRows_orig << " " << nCols_orig << std::endl;
                 
                 assert(submatrix.size() == nRows * nCols);
                 
@@ -1082,7 +1141,8 @@ namespace hbsm {
                 
                 children[0] = new HierarchicalBlockSparseMatrix<Treal>();
                 children[0]->set_params(get_params());
-                children[0]->resize(nRows/2,nCols/2, nRows_orig, nCols_orig);
+                children[0]->resize(nRows/2,nCols/2);
+				children[0]->parent = this;
                 
                 children[0]->add_scaled_identity(*other.children[0],alpha);
             }
@@ -1090,7 +1150,8 @@ namespace hbsm {
                 
                 children[0] = new HierarchicalBlockSparseMatrix<Treal>();
                 children[0]->set_params(get_params());
-                children[0]->resize(nRows/2,nCols/2, nRows_orig, nCols_orig);
+                children[0]->resize(nRows/2,nCols/2);
+				children[0]->parent = this;
                 
                 std::vector<int> rows, cols;
                 std::vector<Treal> vals;
@@ -1118,7 +1179,8 @@ namespace hbsm {
                 
                 children[3] = new HierarchicalBlockSparseMatrix<Treal>();
                 children[3]->set_params(get_params());
-                children[3]->resize(nRows/2,nCols/2, nRows_orig, nCols_orig);
+                children[3]->resize(nRows/2,nCols/2);
+				children[3]->parent = this;
                 
                 children[3]->add_scaled_identity(*other.children[3],alpha);
             }
@@ -1126,19 +1188,17 @@ namespace hbsm {
                 
                 children[3] = new HierarchicalBlockSparseMatrix<Treal>();
                 children[3]->set_params(get_params());
-                children[3]->resize(nRows/2,nCols/2, nRows_orig, nCols_orig);
+                children[3]->resize(nRows/2,nCols/2);
+				children[3]->parent = this;
                 
                 std::vector<int> rows, cols;
                 std::vector<Treal> vals;
                 
                 int child_nRows = nRows/2;
                 int child_nCols = nCols/2;
-                
-                // need to handle a case when original size is not divisible by blocksize-> some elements shold be zeros, not alphas!
-               // std::cout << "creating identity child: sizes " << child_nRows << " " << child_nCols << " " << nRows_orig << " " << nCols_orig << std::endl;;
-                
+			
                 int left_to_fill = nRows_orig % child_nRows;
-               // std::cout << "left to fill " << left_to_fill << std::endl;
+
                 
                 rows.resize(left_to_fill);
                 cols.resize(left_to_fill);

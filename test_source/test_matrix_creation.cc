@@ -29,11 +29,11 @@ static int test_creation() {
 	if(!M.empty())
 		throw std::runtime_error("Error: M.empty() gave wrong result.");
 
-	M.resize(4, 4,4,4);
-    
+	M.resize(4,4);
+
     if(M.get_n_rows() != 4 || M.get_n_cols() != 4 )
         throw std::runtime_error("Error: M.get_n_rows() or get_n_cols() gave wrong result.");
-    
+		
 	if(M.empty())
 		throw std::runtime_error("Error: M.empty() gave wrong result.");
 
@@ -41,19 +41,18 @@ static int test_creation() {
 	if(!M.empty())
 		throw std::runtime_error("Error: M.empty() or clear() gave wrong result.");
 
-	M.resize(7, 16,7,16);
+	M.resize(7,16);
     
     if(M.get_n_rows() != 7 || M.get_n_cols() != 16 )
         throw std::runtime_error("Error: M.get_n_rows() or get_n_cols() gave wrong result.");
-    
     
 	if(M.get_frob_squared() != 0)
 		throw std::runtime_error("Error: M.get_frob_squared() != 0 for newly created matrix.");
 
     M.clear();
-    M.resize(32, 32,32,32);
+    M.resize(25, 25);
     
-    if(M.get_n_rows() != 32|| M.get_n_cols() != 32 )
+    if(M.get_n_rows() != 25|| M.get_n_cols() != 25 )
     throw std::runtime_error("Error: M.get_n_rows() or get_n_cols() gave wrong result.");
     
 
@@ -84,8 +83,6 @@ static int test_creation() {
             
         if(M.get_nnz() != nValues)
             throw std::runtime_error("Error: M.get_nnz() gave wrong result.");
-            
-       
 	}
 
 	  // Test get_values()
@@ -131,22 +128,38 @@ static int test_creation() {
 	
 	MatrixType B;
 	B.assign_from_buffer(&buf[0], size);
-    
+	
+	if(B.get_n_rows() != M.get_n_rows() || B.get_n_cols() != M.get_n_cols()){
+		throw std::runtime_error("Error: wrong result from get_n_rows() after assign_from_buffer().");
+	}
+	
+	if(B.get_size() != M.get_size()){
+		throw std::runtime_error("Error: wrong result from get_size() after assign_from_buffer().");
+	}
+	
     verify_that_matrices_are_equal<MatrixType>(M,B);
 
     MatrixType C;
     C.copy(M);
+	
+	if(C.get_n_rows() != M.get_n_rows()){
+		throw std::runtime_error("Error: wrong result from get_n_rows() after copy().");
+	}
+	
+	if(C.get_size() != M.get_size()){
+		throw std::runtime_error("Error: wrong result from get_size() after copy().");
+	}
 
     verify_that_matrices_are_equal<MatrixType>(M,C);
     verify_that_matrices_are_equal<MatrixType>(M,C);
     verify_that_matrices_are_equal<MatrixType>(B,C);
     
-
+/*
     //check add scaled identity
     MatrixType D,E;
     
     E.set_params(param);
-    E.resize(14,14,14,14);
+    E.resize(14,14);
     
     std::vector<int> rows, cols;
     std::vector<double> vals;
@@ -174,7 +187,7 @@ static int test_creation() {
         std::cout << rows[i] << " " << cols[i] << " " << vals[i] << std::endl;
 
     }
-
+*/
 	return 0;
 }
 
