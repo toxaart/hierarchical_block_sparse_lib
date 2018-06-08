@@ -14,6 +14,49 @@
 #include "test_utils.h"
 
 template<typename MatrixType>
+void check_if_matrices_are_the_same(const MatrixType &A, const MatrixType &B){
+    
+    if(A.get_size() != B.get_size())
+        throw std::runtime_error("Error: wrong result from get_size().");
+        
+    if(A.get_nnz() != B.get_nnz())
+       throw std::runtime_error("Error: wrong result from get_nnz().") ;    
+    
+	if(A.get_frob_squared() != B.get_frob_squared())
+        throw std::runtime_error("Error: wrong result from get_frob_squared().");
+	
+    if(A.get_n_rows() != B.get_n_rows() || A.get_n_cols() != B.get_n_cols())
+        throw std::runtime_error("Error: wrong result from get_n_rows() or get_n_cols().");
+    
+	{
+		int nValues3 = A.get_n_rows() * A.get_n_cols();
+		std::vector<int> rows(nValues3);
+		std::vector<int> cols(nValues3);
+        int counter = 0;
+        for(int i = 0; i < A.get_n_rows(); ++i){
+            for(int j = 0; j < A.get_n_cols(); ++j){
+                rows[counter] = i;
+                cols[counter] = j;
+                counter += 1;
+            }
+        }
+		std::vector<double> values_A, values_B;
+	
+		A.get_values(rows, cols, values_A);
+		B.get_values(rows, cols, values_B);
+		
+		for(int i = 0; i < nValues3; ++i){
+			if(fabs(values_A[i] - values_B[i]) > 1e-12 )
+               throw std::runtime_error("Error: wrong result from get_values() after assignment from buffer.");
+		}
+	
+	}
+    
+}
+
+
+
+template<typename MatrixType>
 static int test_creation() {
 	typename MatrixType::Params param;
 #if 1  
@@ -119,7 +162,7 @@ static int test_creation() {
         assert(rows_nnz[1] == 6 && cols_nnz[1] == 7 && values_nnz[1] == refValue2);
 	}
 	
-
+    
 	size_t size = M.get_size();
     if(size != 516) // two children each 5*4 + 4*8 + 16*8 = 180, plus 3 higher levels 52 bytes each
         throw std::runtime_error("Error: wrong result from get_size().");
@@ -130,38 +173,13 @@ static int test_creation() {
 	MatrixType B;
 	B.assign_from_buffer(&buf[0], size);
     
-    if(M.get_size() != B.get_size())
-        throw std::runtime_error("Error: wrong result from get_size() after assignment from buffer.");
-        
-    if(M.get_nnz() != B.get_nnz())
-       throw std::runtime_error("Error: wrong result from get_nnz() after assignment from buffer.") ;    
-    
-	if(M.get_frob_squared() != B.get_frob_squared())
-        throw std::runtime_error("Error: wrong result from get_frob_squared() after assignment from buffer.");
-	
-	{
-		int nValues3 = M.get_n_rows() * M.get_n_cols();
-		std::vector<int> rows(nValues3);
-		std::vector<int> cols(nValues3);
-        int counter = 0;
-        for(int i = 0; i < M.get_n_rows(); ++i){
-            for(int j = 0; j < M.get_n_cols(); ++j){
-                rows[counter] = i;
-                cols[counter] = j;
-                counter += 1;
-            }
-        }
-		std::vector<double> values_M, values_B;
-	
-		M.get_values(rows, cols, values_M);
-		B.get_values(rows, cols, values_B);
-		
-		for(int i = 0; i < nValues3; ++i){
-			if(fabs(values_M[i] - values_B[i]) > 1e-12 )
-               throw std::runtime_error("Error: wrong result from get_values() after assignment from buffer.");
-		}
-	
-	}
+    check_if_matrices_are_the_same<MatrixType>(M,B);
+
+    MatrixType C;
+    C.copy(M);
+
+    check_if_matrices_are_the_same<MatrixType>(M,C);
+    check_if_matrices_are_the_same<MatrixType>(B,C);
 
 	return 0;
 }

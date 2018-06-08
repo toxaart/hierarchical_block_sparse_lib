@@ -116,7 +116,8 @@ namespace hbsm {
 			size_t get_size() const;	
 
 			void write_to_buffer ( char * dataBuffer, size_t const bufferSize ) const;	
-			void assign_from_buffer ( char * dataBuffer, size_t const bufferSize );		  
+			void assign_from_buffer ( char * dataBuffer, size_t const bufferSize );		
+            void copy(const HierarchicalBlockSparseMatrix<Treal> & other);
 			
     };
 	
@@ -995,12 +996,42 @@ namespace hbsm {
 				p += nRows * nCols * sizeof(Treal);
 				
 			}
-		
-		
+		}
+        
+        
+    template<class Treal> 
+		void HierarchicalBlockSparseMatrix<Treal>::copy(const HierarchicalBlockSparseMatrix<Treal> &other) {
 			
-			 
-			 
-			 
+            if(other.empty()){
+                this->clear();
+                return;
+            }
+            
+            if(other.lowest_level()){
+                
+                this->set_params(other.get_params());
+                this->resize(other.get_n_rows(),other.get_n_cols());
+                assert(submatrix.size() == nRows * nCols);
+                
+                memcpy(&submatrix[0], &(other.submatrix[0]), sizeof(Treal) * other.submatrix.size());
+                
+                return;
+            }
+            
+            this->set_params(other.get_params());
+            this->resize(other.get_n_rows(),other.get_n_cols());
+            
+            for(int i = 0; i < 4; ++i){
+                if(children[i] != NULL)
+                    throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::copy(): non-null child exist!");
+                
+                if(other.children[i] != NULL){
+                    children[i] = new HierarchicalBlockSparseMatrix<Treal>();
+                    children[i]->copy(*other.children[i]);
+                }
+                
+
+            }
 		}
 			
 } /* end namespace hbsm */
