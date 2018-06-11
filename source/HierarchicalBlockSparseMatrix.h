@@ -67,7 +67,7 @@ namespace hbsm {
             // function returns code consisting of digits 0-3, which indicated the path from root to particular submatrix if read from left to right
             std::string get_position_code() const;
             
-            // functions returning top left corner of a leaf level matrix
+            // functions returning top left corner of any matrix in hierarchy
             int get_x0() const;
             int get_y0() const;
             
