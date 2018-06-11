@@ -61,7 +61,19 @@ namespace hbsm {
 			
 			Treal get_single_value(int row, int col) const;
 			
-			int get_level() const; // computes the distance in the hierarchy from top level to current. 
+            // computes the distance in the hierarchy from top level to current. 
+			int get_level() const; 
+            
+            // function returns code consisting of digits 0-3, which indicated the path from root to particular submatrix if read from left to right
+            std::string get_position_code() const;
+            
+            // functions returning top left corner of a leaf level matrix
+            int get_x0() const;
+            int get_y0() const;
+            
+            bool on_right_boundary() const; // for any level!
+            bool on_bottom_boundary() const;
+
 						
 	public:
 			struct Params {
@@ -126,6 +138,7 @@ namespace hbsm {
 			
             void add_scaled_identity(const HierarchicalBlockSparseMatrix<Treal> & other, Treal alpha);
             
+
     };
 	
 	template<class Treal> 
@@ -133,26 +146,25 @@ namespace hbsm {
 			if(parent == NULL)
 				return nRows_orig;
 			else{
-				HierarchicalBlockSparseMatrix<Treal> *tmp = parent;
-				int counter = 0;
-				while(tmp != NULL){
+				const HierarchicalBlockSparseMatrix<Treal> *tmp = this;
+				while(tmp->parent != NULL){
 					tmp = tmp->parent;
-				}				
+                  } 
 				return tmp->nRows_orig;
 			}					
 		}
 		
 	template<class Treal> 
 		int HierarchicalBlockSparseMatrix<Treal>::get_n_cols() const  {
-			if(parent == NULL)
+            if(parent == NULL)
 				return nCols_orig;
-			else{				
-				HierarchicalBlockSparseMatrix<Treal> *tmp = parent;
-				while(tmp != NULL){
+			else{
+				const HierarchicalBlockSparseMatrix<Treal> *tmp = this;
+				while(tmp->parent != NULL){
 					tmp = tmp->parent;
-				}				
+                  } 
 				return tmp->nCols_orig;
-			}					
+			}			
 		}	
 		
 	template<class Treal> 
@@ -173,7 +185,19 @@ namespace hbsm {
 				
 			}	
 				
-		}	
+		}
+
+	template<class Treal> 
+		bool HierarchicalBlockSparseMatrix<Treal>::on_right_boundary() const  {
+            if((get_x0() + nCols >= get_n_cols()) && (get_x0() < get_n_cols())) return true;
+            else return false;
+		} 
+
+	template<class Treal> 
+		bool HierarchicalBlockSparseMatrix<Treal>::on_bottom_boundary() const  {
+            if((get_y0() + nRows >= get_n_rows()) && (get_y0()< get_n_rows())) return true;
+            else return false;
+		}   	
 	
 	template<class Treal> 
 		bool HierarchicalBlockSparseMatrix<Treal>::children_exist() const  {
@@ -354,24 +378,40 @@ namespace hbsm {
 			if(lowest_level()){
 				// assume that the matrix has been properly resized already;
 				assert(submatrix.size() == nCols*nRows);
-				
+                
 				for(int i = 0; i < nCols*nRows; ++i){
 					submatrix[i] = 0.0;
 				}
-				
+                
+                int max_row_num = nRows;
+                if(on_bottom_boundary()) max_row_num = get_n_rows() % blocksize;
+                
+                int max_col_num = nCols;
+                if(on_right_boundary()) max_col_num = get_n_cols() % blocksize;
+                
+                if(get_y0() >= get_n_rows() || get_x0() >= get_n_cols()){ // block to skip
+                    return;
+                }
+                    
 				for(size_t i = 0; i < values.size(); ++i){
-					int row = rows[i];
+					
+                    int row = rows[i];
 					int col = cols[i];
+                    
+                    // if boundary block, do not write elements outside big matrix
+                    if(row >= max_row_num || col >= max_col_num) continue;
+                    
 					Treal val = values[i];
 					
-					if(useMax){
-						submatrix[col * nRows + row] = (val > submatrix[col * nRows + row]) ? val : submatrix[col * nRows + row];
-					}
-					else{
-						submatrix[col * nRows + row] += val; /* Note: we use += here, so if an element appears several times, the result becomes the sum of those contributions. */
-					}
+                    if(useMax){
+                        submatrix[col * nRows + row] = (val > submatrix[col * nRows + row]) ? val : submatrix[col * nRows + row];
+                    }
+                    else{
+                        submatrix[col * nRows + row] += val; // Note: we use += here, so if an element appears several times, the result becomes the sum of those contributions. 
+                    }
 
 				}
+                
 				
 				
 				return;
@@ -1105,28 +1145,31 @@ namespace hbsm {
         
     template<class Treal> 
 		void HierarchicalBlockSparseMatrix<Treal>::add_scaled_identity(const HierarchicalBlockSparseMatrix<Treal> & other, Treal alpha) {
-        
+    
             if(other.empty()){
                 throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): empty matrix as input!");
             }
             
-            if(other.get_n_rows() != other.get_n_cols())
+            if(other.nRows != other.nCols)
                 throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-square matrix as input!");
-    
             
             this->clear();
     
             this->set_params(other.get_params());
                 
-            this->resize(other.nRows,other.nCols);
-            
+            this->resize(other.nRows_orig,other.nCols_orig);
            
             if(other.lowest_level()){
-                
+    
                 assert(submatrix.size() == nRows * nCols);
                 
                 memcpy(&submatrix[0], &(other.submatrix[0]), sizeof(Treal) * other.submatrix.size());
-                
+
+                //int n_rows_to_add = nRows;
+                //if(on_bottom_boundary()) n_rows_to_add = get_n_rows() % nRows;
+                 
+                //std::cout << "leaf level call: n_rows_to_add = " << n_rows_to_add << std::endl;
+
                 for(int i = 0; i < nRows; ++i){
                     submatrix[i*nRows + i] += alpha;
                 }
@@ -1134,24 +1177,39 @@ namespace hbsm {
                 return;
             }
             
-        
+            //non-leaf case
+            if(other.children[1] != NULL){
+                children[1] = new HierarchicalBlockSparseMatrix<Treal>();
+                children[1]->parent = this;
+                children[1]->copy(*(other.children[1]));
+            }
+            
+            if(other.children[2] != NULL){
+                children[2] = new HierarchicalBlockSparseMatrix<Treal>();
+                children[2]->parent = this;
+                children[2]->copy(*(other.children[2]));
+            }
+            
+
             if(other.children[0] != NULL){
-                if(children[0] != NULL)
-                    throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-null child occured!");
                 
+                if(children[0] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-null child0 occured");
+            
                 children[0] = new HierarchicalBlockSparseMatrix<Treal>();
-                children[0]->set_params(get_params());
-                children[0]->resize(nRows/2,nCols/2);
-				children[0]->parent = this;
+                
+                children[0]->parent = this;
                 
                 children[0]->add_scaled_identity(*other.children[0],alpha);
+                
             }
             else{
                 
+                if(children[0] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-null child0 occured");
+                
                 children[0] = new HierarchicalBlockSparseMatrix<Treal>();
+                children[0]->parent = this;
                 children[0]->set_params(get_params());
-                children[0]->resize(nRows/2,nCols/2);
-				children[0]->parent = this;
+                children[0]->resize(nRows/2, nCols/2);
                 
                 std::vector<int> rows, cols;
                 std::vector<Treal> vals;
@@ -1160,59 +1218,121 @@ namespace hbsm {
                 cols.resize(nRows/2);
                 vals.resize(nRows/2);
                 
-
-                
-                
-                for(int i = 0; i < nRows/2; ++ i){
+                for(int i = 0; i < nRows/2; ++i){
                     rows[i] = i;
                     cols[i] = i;
                     vals[i] = alpha;
                 }
                 
-                children[0]->assign_from_vectors(rows,cols,vals);
+                children[0]->assign_from_vectors(rows, cols, vals);
             }
             
             
             if(other.children[3] != NULL){
-                if(children[3] != NULL)
-                    throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-null child occured!");
                 
+                if(children[3] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-null child0 occured");
+            
                 children[3] = new HierarchicalBlockSparseMatrix<Treal>();
-                children[3]->set_params(get_params());
-                children[3]->resize(nRows/2,nCols/2);
-				children[3]->parent = this;
+                
+                children[3]->parent = this;
                 
                 children[3]->add_scaled_identity(*other.children[3],alpha);
+                
             }
             else{
                 
+                if(children[3] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-null child0 occured");
+                
                 children[3] = new HierarchicalBlockSparseMatrix<Treal>();
+                children[3]->parent = this;
                 children[3]->set_params(get_params());
-                children[3]->resize(nRows/2,nCols/2);
-				children[3]->parent = this;
+                children[3]->resize(nRows/2, nCols/2);
                 
                 std::vector<int> rows, cols;
                 std::vector<Treal> vals;
                 
-                int child_nRows = nRows/2;
-                int child_nCols = nCols/2;
-			
-                int left_to_fill = nRows_orig % child_nRows;
-
+                rows.resize(nRows/2);
+                cols.resize(nRows/2);
+                vals.resize(nRows/2);
                 
-                rows.resize(left_to_fill);
-                cols.resize(left_to_fill);
-                vals.resize(left_to_fill);
-                
-                for(int i = 0; i < left_to_fill; ++ i){
+                for(int i = 0; i < nRows/2; ++i){
                     rows[i] = i;
                     cols[i] = i;
                     vals[i] = alpha;
                 }
                 
-                children[3]->assign_from_vectors(rows,cols,vals);
+                children[3]->assign_from_vectors(rows, cols, vals);
             }
-         
+
+            
+		}
+        
+        
+    template<class Treal> 
+		std::string HierarchicalBlockSparseMatrix<Treal>::get_position_code() const  {
+
+            HierarchicalBlockSparseMatrix<Treal> *tmp = parent;
+			
+            if(parent != NULL){
+                std::string code;
+                if(this == parent->children[0]) code = "0";
+                if(this == parent->children[1]) code = "1";
+                if(this == parent->children[2]) code = "2";
+                if(this == parent->children[3]) code = "3";
+                return parent->get_position_code() + code;
+            }
+            else{
+                return "";
+            }
+					
+		}
+        
+    template<class Treal> 
+		int HierarchicalBlockSparseMatrix<Treal>::get_x0() const  {
+    
+            if(parent == NULL) return 0; // top level
+            else{
+              
+               std::string position_code_str = get_position_code();
+               int x0 = 0;
+               int two_to_power = 1;
+               
+                for(int i = position_code_str.length()-1; i >= 0; --i){
+                    char K = position_code_str[i];
+                    if(K == '2' || K == '3'){
+                        x0 += two_to_power;
+                    }
+                    two_to_power *= 2;
+                }
+                
+                x0 *= nCols;
+                return x0;
+            }
+            
+		}
+        
+    template<class Treal> 
+		int HierarchicalBlockSparseMatrix<Treal>::get_y0() const  {
+            
+            if(parent == NULL) return 0; // top level
+            else{
+              
+               std::string position_code_str = get_position_code();
+               int y0 = 0;
+               int two_to_power = 1;
+               
+                for(int i = position_code_str.length()-1; i >= 0; --i){
+                    char K = position_code_str[i];
+                    if(K == '1' || K == '3'){
+                        y0 += two_to_power;
+                    }
+                    two_to_power *= 2;
+                }
+                
+                y0 *= nRows;
+                return y0;
+            }
+            
 		}
 			
 } /* end namespace hbsm */

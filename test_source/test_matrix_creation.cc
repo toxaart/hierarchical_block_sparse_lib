@@ -50,9 +50,9 @@ static int test_creation() {
 		throw std::runtime_error("Error: M.get_frob_squared() != 0 for newly created matrix.");
 
     M.clear();
-    M.resize(25, 25);
+    M.resize(14, 14);
     
-    if(M.get_n_rows() != 25|| M.get_n_cols() != 25 )
+    if(M.get_n_rows() != 14|| M.get_n_cols() != 14 )
     throw std::runtime_error("Error: M.get_n_rows() or get_n_cols() gave wrong result.");
     
 
@@ -120,7 +120,7 @@ static int test_creation() {
 	
     
 	size_t size = M.get_size();
-    if(size != 516) // two children each 5*4 + 4*8 + 16*8 = 180, plus 3 higher levels 52 bytes each
+    if(size != 464) // two children each 5*4 + 4*8 + 16*8 = 180, plus 2 higher levels 52 bytes each
         throw std::runtime_error("Error: wrong result from get_size().");
 	
 	std::vector<char> buf(size);
@@ -154,40 +154,84 @@ static int test_creation() {
     verify_that_matrices_are_equal<MatrixType>(M,C);
     verify_that_matrices_are_equal<MatrixType>(B,C);
     
-/*
-    //check add scaled identity
-    MatrixType D,E;
     
-    E.set_params(param);
-    E.resize(14,14);
-    
-    std::vector<int> rows, cols;
-    std::vector<double> vals;
-    
-    rows.push_back(0);
-    cols.push_back(0);
-    vals.push_back(2.2);
-    
-    rows.push_back(13);
-    cols.push_back(13);
-    vals.push_back(-2.2);
-    
-    E.assign_from_vectors(rows,cols,vals);
-    //D.copy(E);
-    D.add_scaled_identity(E,0.5);
-    
-    rows.clear();
-    cols.clear();
-    vals.clear();
-    
-    D.get_all_values(rows,cols,vals);
-    //assert(rows.size() > 0);
+    //test relatively large matrix and position codes
+    {
+        
+        typename MatrixType::Params param_D;
+        param_D.blocksize = 3;
 
-    for(int i = 0; i < rows.size(); ++i){
-        std::cout << rows[i] << " " << cols[i] << " " << vals[i] << std::endl;
+        MatrixType D;
+        D.set_params(param_D);
+        D.resize(14,17);
+        std::vector<int> rows,cols;
+        std::vector<double> vals;
+        for(int i = 0; i < 14; ++i){
+            for(int j = 0; j < 17; ++j){
+                rows.push_back(i);
+                cols.push_back(j);
+                vals.push_back((i-j)/3.33);
+                
+                
+            }
+        }
+  
+        D.assign_from_vectors(rows,cols,vals);
+        std::cout << "D true size is " << D.get_n_rows() << " " << D.get_n_cols() << std::endl;
+        //std::cout << D.children[3]->children[0]->children[2]->get_x0() << std::endl;
+        /*
+        std::cout << D.on_right_boundary() << std::endl;
+        std::cout << D.on_bottom_boundary() << std::endl;
+
+        std::cout << D.children[3]->children[0]->children[0]->on_right_boundary() << std::endl;
+        std::cout << D.children[3]->children[0]->children[2]->on_right_boundary() << std::endl;
+        
+        std::cout << D.children[3]->children[0]->children[0]->on_bottom_boundary() << std::endl;
+        std::cout << D.children[2]->children[1]->children[1]->on_bottom_boundary() << std::endl;*/
+    }  
+
+    {
+
+        //check add scaled identity
+        MatrixType D,E;
+        
+        E.set_params(param);
+        E.resize(33,33);
+        
+        std::vector<int> rows, cols;
+        std::vector<double> vals;
+      
+        rows.push_back(5);
+        cols.push_back(5);
+        vals.push_back(2.2);
+    
+    
+        rows.push_back(2);
+        cols.push_back(24);
+        vals.push_back(-2.2);
+    
+        
+        E.assign_from_vectors(rows,cols,vals);
+      
+        D.add_scaled_identity(E,0.5);
+        
+        std::cout << "NNZ in D " << D.get_nnz() << std::endl;
+         
+        rows.clear();
+        cols.clear();
+        vals.clear();
+        
+        D.get_all_values(rows,cols,vals);
+        //assert(rows.size() > 0);
+
+        for(int i = 0; i < rows.size(); ++i){
+           // std::cout << rows[i] << " " << cols[i] << " " << vals[i] << std::endl;
+
+        }
 
     }
-*/
+
+
 	return 0;
 }
 
