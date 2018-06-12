@@ -138,6 +138,8 @@ namespace hbsm {
 			
             void add_scaled_identity(const HierarchicalBlockSparseMatrix<Treal> & other, Treal alpha);
             
+			static void add(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> const & B, 
+																HierarchicalBlockSparseMatrix<Treal> & C);
 
     };
 	
@@ -1229,7 +1231,7 @@ namespace hbsm {
             
             if(other.children[3] != NULL){
                 
-                if(children[3] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-null child0 occured");
+                if(children[3] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-null child3 occured");
             
                 children[3] = new HierarchicalBlockSparseMatrix<Treal>();
                 
@@ -1240,7 +1242,7 @@ namespace hbsm {
             }
             else{
                 
-                if(children[3] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-null child0 occured");
+                if(children[3] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-null child3 occured");
                 
                 children[3] = new HierarchicalBlockSparseMatrix<Treal>();
                 children[3]->parent = this;
@@ -1332,6 +1334,81 @@ namespace hbsm {
                 return y0;
             }
             
+		}
+		
+	template<class Treal>
+		void HierarchicalBlockSparseMatrix<Treal>::add(HierarchicalBlockSparseMatrix<Treal> const & A,
+				       HierarchicalBlockSparseMatrix<Treal> const & B,
+				       HierarchicalBlockSparseMatrix<Treal> & C){
+		
+			if(A.nRows_orig != B.nRows_orig || A.nCols_orig != B.nCols_orig ){
+				throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add(): matrices to add have different sizes!");
+			}			   
+			
+			C.clear();
+    
+            C.set_params(A.get_params());
+                
+            C.resize(A.nRows_orig,A.nCols_orig);
+			
+			
+			if(A.lowest_level()){
+				
+				//assume that C has been properly resized;
+				assert(A.submatrix.size() == B.submatrix.size());
+				assert(A.submatrix.size() == C.submatrix.size());
+				
+				for(int i = 0; i < A.submatrix.size(); ++i){
+					C.submatrix[i] = A.submatrix[i] + B.submatrix[i];
+				}
+				
+				return;
+			}
+			
+			for(int i = 0; i < 4; ++i){
+				
+				if(A.children[i] != NULL && B.children[i] != NULL){
+					
+					if(C.children[i] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add(): matrix C has non-null child!");
+					
+					C.children[i] = new HierarchicalBlockSparseMatrix<Treal>();
+					C.children[i]->parent = &C;
+					add(*A.children[i], *B.children[i], *C.children[i]);
+					
+				} 
+				
+				if(A.children[i] == NULL && B.children[i] != NULL){
+					
+					if(C.children[i] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add(): matrix C has non-null child!");
+					
+					C.children[i] = new HierarchicalBlockSparseMatrix<Treal>();
+					C.children[i]->parent = &C;
+					
+					C.children[i]->copy(*B.children[i]);
+					
+				}
+				
+				if(A.children[i] != NULL && B.children[i] == NULL){
+					
+					if(C.children[i] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add(): matrix C has non-null child!");
+					
+					C.children[i] = new HierarchicalBlockSparseMatrix<Treal>();
+					C.children[i]->parent = &C;
+					
+					C.children[i]->copy(*A.children[i]);
+					
+				}
+				
+				if(A.children[i] == NULL && B.children[i] == NULL){
+					
+					if(C.children[i] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add(): matrix C has non-null child!");
+					
+					//nothing to do here, leave it NULL
+				}
+				
+			}
+						   
+			return;
 		}
 			
 } /* end namespace hbsm */
