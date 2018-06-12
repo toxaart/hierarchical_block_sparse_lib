@@ -178,16 +178,7 @@ static int test_creation() {
   
         D.assign_from_vectors(rows,cols,vals);
         std::cout << "D true size is " << D.get_n_rows() << " " << D.get_n_cols() << std::endl;
-        //std::cout << D.children[3]->children[0]->children[2]->get_x0() << std::endl;
-        /*
-        std::cout << D.on_right_boundary() << std::endl;
-        std::cout << D.on_bottom_boundary() << std::endl;
 
-        std::cout << D.children[3]->children[0]->children[0]->on_right_boundary() << std::endl;
-        std::cout << D.children[3]->children[0]->children[2]->on_right_boundary() << std::endl;
-        
-        std::cout << D.children[3]->children[0]->children[0]->on_bottom_boundary() << std::endl;
-        std::cout << D.children[2]->children[1]->children[1]->on_bottom_boundary() << std::endl;*/
     }  
 
     {
@@ -212,22 +203,29 @@ static int test_creation() {
     
         
         E.assign_from_vectors(rows,cols,vals);
-      
+
         D.add_scaled_identity(E,0.5);
-        
-        std::cout << "NNZ in D " << D.get_nnz() << std::endl;
-         
-        rows.clear();
-        cols.clear();
-        vals.clear();
-        
-        D.get_all_values(rows,cols,vals);
-        //assert(rows.size() > 0);
-
-        for(int i = 0; i < rows.size(); ++i){
-           // std::cout << rows[i] << " " << cols[i] << " " << vals[i] << std::endl;
-
-        }
+		
+		E.clear();
+        E.resize(33,33);
+		rows.clear();
+		cols.clear();
+		vals.clear();
+		
+		for(int i = 0; i < 33; ++i){
+			rows.push_back(i);
+			cols.push_back(i);
+			vals.push_back(0.5);
+		}
+		vals[5] = 2.7;
+		
+		rows.push_back(2);
+        cols.push_back(24);
+        vals.push_back(-2.2);
+		
+        E.assign_from_vectors(rows,cols,vals);
+		
+		verify_that_matrices_are_equal<MatrixType>(E,D);
 
     }
 

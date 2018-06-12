@@ -68,8 +68,8 @@ namespace hbsm {
             std::string get_position_code() const;
             
             // functions returning top left corner of any matrix in hierarchy
-            int get_x0() const;
-            int get_y0() const;
+            int get_first_col_position() const;
+            int get_first_row_position() const;
             
             bool on_right_boundary() const; // for any level!
             bool on_bottom_boundary() const;
@@ -189,13 +189,13 @@ namespace hbsm {
 
 	template<class Treal> 
 		bool HierarchicalBlockSparseMatrix<Treal>::on_right_boundary() const  {
-            if((get_x0() + nCols >= get_n_cols()) && (get_x0() < get_n_cols())) return true;
+            if((get_first_col_position() + nCols >= get_n_cols()) && (get_first_col_position() < get_n_cols())) return true;
             else return false;
 		} 
 
 	template<class Treal> 
 		bool HierarchicalBlockSparseMatrix<Treal>::on_bottom_boundary() const  {
-            if((get_y0() + nRows >= get_n_rows()) && (get_y0()< get_n_rows())) return true;
+            if((get_first_row_position() + nRows >= get_n_rows()) && (get_first_row_position()< get_n_rows())) return true;
             else return false;
 		}   	
 	
@@ -362,11 +362,15 @@ namespace hbsm {
 				     const std::vector<Treal> & values,
 				     bool useMax,
 					 bool boundaries_checked) {
+						 
+						 
 			
 			assert(blocksize > 0);
 			if(rows.size() != values.size() || cols.size() != values.size())
 				throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors: bad sizes.");
-					
+			
+			if(rows.size() == 0) return;
+		
 			// this will be done only at the top level, later it is not necessary
 			if(!boundaries_checked){
 				for(int i = 0; i < values.size(); ++i){
@@ -389,7 +393,7 @@ namespace hbsm {
                 int max_col_num = nCols;
                 if(on_right_boundary()) max_col_num = get_n_cols() % blocksize;
                 
-                if(get_y0() >= get_n_rows() || get_x0() >= get_n_cols()){ // block to skip
+                if(get_first_row_position() >= get_n_rows() || get_first_col_position() >= get_n_cols()){ // block to skip
                     return;
                 }
                     
@@ -1165,11 +1169,6 @@ namespace hbsm {
                 
                 memcpy(&submatrix[0], &(other.submatrix[0]), sizeof(Treal) * other.submatrix.size());
 
-                //int n_rows_to_add = nRows;
-                //if(on_bottom_boundary()) n_rows_to_add = get_n_rows() % nRows;
-                 
-                //std::cout << "leaf level call: n_rows_to_add = " << n_rows_to_add << std::endl;
-
                 for(int i = 0; i < nRows; ++i){
                     submatrix[i*nRows + i] += alpha;
                 }
@@ -1288,7 +1287,7 @@ namespace hbsm {
 		}
         
     template<class Treal> 
-		int HierarchicalBlockSparseMatrix<Treal>::get_x0() const  {
+		int HierarchicalBlockSparseMatrix<Treal>::get_first_col_position() const  {
     
             if(parent == NULL) return 0; // top level
             else{
@@ -1312,7 +1311,7 @@ namespace hbsm {
 		}
         
     template<class Treal> 
-		int HierarchicalBlockSparseMatrix<Treal>::get_y0() const  {
+		int HierarchicalBlockSparseMatrix<Treal>::get_first_row_position() const  {
             
             if(parent == NULL) return 0; // top level
             else{
