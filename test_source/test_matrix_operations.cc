@@ -168,141 +168,149 @@ template<typename MatrixType>
 static int test_operations() {
   typename MatrixType::Params param;
 #if 1  
-  param.blocksize = 2; // Only for block sparse matrix
+	param.blocksize = 2; // Only for block sparse matrix
 #endif
   
   // Test add()
 
-  MatrixType A;
-  A.set_params(param);
-  A.resize(2, 3);
-  {
-    SparseMatrix tmp;
-    set_row(tmp, 0, 1, 2);
-    set_row(tmp, 1, 3, 4);
-    tmp.assign(A);
-  }
+	MatrixType A;
+	A.set_params(param);
+	A.resize(2, 3);	
+	{
+		SparseMatrix tmp;
+		set_row(tmp, 0, 2, 3, 5);
+		set_row(tmp, 1, 0, 1, 2);
+		tmp.assign(A);
+	}
+		
 
-  MatrixType B;
-  B.set_params(param);
-  B.resize(2, 3);
-  {
-    SparseMatrix tmp;
-    set_row(tmp, 0, 5, 6);
-    set_row(tmp, 1, 7, 8);
-    tmp.assign(B);
-  }
+	MatrixType B;
+	B.set_params(param);
+	B.resize(2, 3);
+	{
+		SparseMatrix tmp;
+		set_row(tmp, 0, 1, 3, 2);
+		set_row(tmp, 1, 6, 2, 4);
+		tmp.assign(B);
+	}
 
-  MatrixType C;
-  C.set_params(param);
-  MatrixType::add(A, B, C);
+	MatrixType C;
+	C.set_params(param);
+	MatrixType::add(A, B, C);
 
-  MatrixType Cref;
-  Cref.set_params(param);
-  Cref.resize(2, 3);
-  {
-    SparseMatrix tmp;
-    set_row(tmp, 0, 6, 8);
-    set_row(tmp, 1, 10, 12);
-    tmp.assign(Cref);
-  }
+	MatrixType Cref;
+	Cref.set_params(param);
+	Cref.resize(2, 3);
+	{
+		SparseMatrix tmp;
+		set_row(tmp, 0, 3, 6, 7);
+		set_row(tmp, 1, 6, 3, 6);
+		tmp.assign(Cref);
+	}
+
   
-  std::cout << "C: " << C.get_n_rows() << " " << C.get_n_cols() << ", Cref: " << Cref.get_n_rows() << " " << Cref.get_n_cols() << std::endl;
-  
-  
-  verify_that_matrices_are_equal(C, Cref);  
+	verify_that_matrices_are_equal(C, Cref);  
 
-  // Test multiply()
+	// Test multiply()
+	
+	MatrixType D;
+	D.set_params(param);
+	D.resize(3, 2);
+	{
+		SparseMatrix tmp;
+		set_row(tmp, 0, 2, 1);
+		set_row(tmp, 1, 7, 3);
+		set_row(tmp, 2, 3, 5);
+		tmp.assign(D);
+	}
+  
+	MatrixType AxD;
+	MatrixType::multiply(A, false, D, false, AxD);
+
+	MatrixType AxDref;
+	AxDref.set_params(param);
+	AxDref.resize(2, 2);
+	{
+		SparseMatrix tmp;
+		set_row(tmp, 0, 40, 36);
+		set_row(tmp, 1, 13, 13);
+		tmp.assign(AxDref);
+	}
+	
+    verify_that_matrices_are_equal(AxD, AxDref);
+
+  
+	MatrixType DxA;
+	MatrixType::multiply(D, false, A, false, DxA);
+
+	MatrixType DxAref;
+	DxAref.set_params(param);
+	DxAref.resize(3, 3);
+	{
+	SparseMatrix tmp;
+	set_row(tmp, 0,  4,  7, 12);
+	set_row(tmp, 1, 14, 24, 41);
+	set_row(tmp, 2,  6, 14, 25);
+	tmp.assign(DxAref);
+	}
+
+
+	verify_that_matrices_are_equal(DxA, DxAref);
+  
+
+	if (verbose)
+		std::cout << "Test multiply NT" << std::endl;
+	MatrixType AxAt;
+	MatrixType::multiply(A, false, A, true, AxAt);
+
+	MatrixType AxAt_ref;
+	AxAt_ref.set_params(param);
+	AxAt_ref.resize(2, 2);
+	{
+		SparseMatrix tmp;
+		set_row(tmp, 0, 38, 13);
+		set_row(tmp, 1, 13,  5);
+		tmp.assign(AxAt_ref);
+	}
+	
+	verify_that_matrices_are_equal(AxAt, AxAt_ref);
+  
+	if (verbose)
+		std::cout << "Test multiply TN" << std::endl;
+		
+	MatrixType AtxA;
+	MatrixType::multiply(A, true, A, false, AtxA);
+
+	MatrixType AtxA_ref;
+	AtxA_ref.set_params(param);
+	AtxA_ref.resize(3, 3);
+	{
+		SparseMatrix tmp;
+		set_row(tmp, 0,  4,  6, 10);
+		set_row(tmp, 1,  6, 10, 17);
+		set_row(tmp, 2, 10, 17, 29);
+		tmp.assign(AtxA_ref);
+	}
+	verify_that_matrices_are_equal(AtxA, AtxA_ref);
+
+	if (verbose)
+		std::cout << "Test multiply TT" << std::endl;
+	MatrixType AtxDt;
+	MatrixType::multiply(A, true, D, true, AtxDt);
+
+	MatrixType AtxDt_ref;
+	AtxDt_ref.set_params(param);
+	AtxDt_ref.resize(3, 3);
+	{
+	SparseMatrix tmp;
+		set_row(tmp, 0,  4, 14,  6);
+		set_row(tmp, 1,  7, 24, 14);
+		set_row(tmp, 2, 12, 41, 25);
+		tmp.assign(AtxDt_ref);    
+	}
+	
+	verify_that_matrices_are_equal(AtxDt, AtxDt_ref);
 /*
-  MatrixType D;
-  D.set_params(param);
-  D.resize(3, 2);
-  {
-    SparseMatrix tmp;
-    set_row(tmp, 0, 2, 1);
-    set_row(tmp, 1, 7, 3);
-    set_row(tmp, 2, 3, 5);
-    tmp.assign(D);
-  }
-  MatrixType AxD;
-  MatrixType::multiply(A, false, D, false, AxD);
-
-  MatrixType AxDref;
-  AxDref.set_params(param);
-  AxDref.resize(2, 2);
-  {
-    SparseMatrix tmp;
-    set_row(tmp, 0, 40, 36);
-    set_row(tmp, 1, 13, 13);
-    tmp.assign(AxDref);
-  }
-  verify_that_matrices_are_equal(AxD, AxDref);
-
-  MatrixType DxA;
-  MatrixType::multiply(D, false, A, false, DxA);
-
-  MatrixType DxAref;
-  DxAref.set_params(param);
-  DxAref.resize(3, 3);
-  {
-    SparseMatrix tmp;
-    set_row(tmp, 0,  4,  7, 12);
-    set_row(tmp, 1, 14, 24, 41);
-    set_row(tmp, 2,  6, 14, 25);
-    tmp.assign(DxAref);
-  }
-  verify_that_matrices_are_equal(DxA, DxAref);
-
-  if (verbose)
-    std::cout << "Test multiply NT" << std::endl;
-  MatrixType AxAt;
-  MatrixType::multiply(A, false, A, true, AxAt);
-
-  MatrixType AxAt_ref;
-  AxAt_ref.set_params(param);
-  AxAt_ref.resize(2, 2);
-  {
-    SparseMatrix tmp;
-    set_row(tmp, 0, 38, 13);
-    set_row(tmp, 1, 13,  5);
-    tmp.assign(AxAt_ref);
-  }
-  verify_that_matrices_are_equal(AxAt, AxAt_ref);
-  
-  if (verbose)
-    std::cout << "Test multiply TN" << std::endl;
-  MatrixType AtxA;
-  MatrixType::multiply(A, true, A, false, AtxA);
-
-  MatrixType AtxA_ref;
-  AtxA_ref.set_params(param);
-  AtxA_ref.resize(3, 3);
-  {
-    SparseMatrix tmp;
-    set_row(tmp, 0,  4,  6, 10);
-    set_row(tmp, 1,  6, 10, 17);
-    set_row(tmp, 2, 10, 17, 29);
-    tmp.assign(AtxA_ref);
-  }
-  verify_that_matrices_are_equal(AtxA, AtxA_ref);
-
-  if (verbose)
-    std::cout << "Test multiply TT" << std::endl;
-  MatrixType AtxDt;
-  MatrixType::multiply(A, true, D, true, AtxDt);
-
-  MatrixType AtxDt_ref;
-  AtxDt_ref.set_params(param);
-  AtxDt_ref.resize(3, 3);
-  {
-    SparseMatrix tmp;
-    set_row(tmp, 0,  4, 14,  6);
-    set_row(tmp, 1,  7, 24, 14);
-    set_row(tmp, 2, 12, 41, 25);
-    tmp.assign(AtxDt_ref);    
-  }
-  verify_that_matrices_are_equal(AtxDt, AtxDt_ref);
-
   if (verbose)
     std::cout << "Test inv_chol" << std::endl;
   // Test inv_chol()
