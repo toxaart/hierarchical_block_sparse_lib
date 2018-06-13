@@ -162,8 +162,14 @@ namespace hbsm {
 			static void add(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> const & B, 
 																HierarchicalBlockSparseMatrix<Treal> & C);
 																
-		   static void multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
+			static void multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
                         HierarchicalBlockSparseMatrix<Treal>& C);		
+						
+			void rescale(HierarchicalBlockSparseMatrix<Treal> const& other, Treal alpha);
+	
+			static void inv_chol(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & Z);	
+						
+						
 						
 			void print() const{
 				std::vector<int> rows, cols;
@@ -414,6 +420,8 @@ namespace hbsm {
 			}
 			
 			if(lowest_level()){
+				
+			
 				
 				/*
 				std::cout << "assign_from_vectors: leaf level called" << std::endl;
@@ -1161,13 +1169,12 @@ namespace hbsm {
                 this->clear();
                 return;
             }
+			
+			            
+            set_params(other.get_params());
+            resize(other.nRows_orig,other.nCols_orig);
             
             if(other.lowest_level()){
-                
-                
-                this->set_params(other.get_params());
-                
-                this->resize(other.nRows,other.nCols);
                 
                 assert(submatrix.size() == nRows * nCols);
                 
@@ -1175,12 +1182,6 @@ namespace hbsm {
                 
                 return;
             }
-            
-            this->set_params(other.get_params());
-            if(get_level() == 0) this->resize(other.nRows_orig,other.nCols_orig);
-			else this->resize(other.nRows,other.nCols);
-            
-    
             
             for(int i = 0; i < 4; ++i){
                 if(children[i] != NULL)
@@ -1978,6 +1979,180 @@ namespace hbsm {
 			
 	   
 			return;
+		}
+		
+		
+	template<class Treal> 
+		void HierarchicalBlockSparseMatrix<Treal>::rescale(HierarchicalBlockSparseMatrix<Treal> const & other, Treal alpha){
+				
+			if(!empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::rescale(): non-empty matrix called this method!");
+			
+            if(other.empty()){
+                clear();
+                return;
+            }
+            
+			set_params(other.get_params());
+            resize(other.nRows_orig,other.nCols_orig);
+			
+            if(other.lowest_level()){
+			
+                assert(submatrix.size() == nRows * nCols);
+                
+                for(int i = 0; i < nRows * nCols; ++i) submatrix[i] = other.submatrix[i] * alpha;
+                
+                return;
+            }			
+            
+            for(int i = 0; i < 4; ++i){
+                if(children[i] != NULL)
+                    throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::copy(): non-null child exist!");
+                
+                if(other.children[i] != NULL){
+                    children[i] = new HierarchicalBlockSparseMatrix<Treal>();
+                    children[i]->rescale(*other.children[i], alpha);
+					children[i]->parent = this;
+                }
+
+            }
+			
+		}
+		
+		
+		  /* inv_chol implements a left-looking inverse Cholesky algorithm */
+	template<class Treal> 
+		void HierarchicalBlockSparseMatrix<Treal>::inv_chol(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & Z){
+			
+			  /* Implements the following left-looking inverse Cholesky algorithm (Z = invChol(A)):
+			 A = [A_00 A_01
+				  A_10 A_11]
+			 Z_00 = invChol(A_00)
+			 R = Z_00^T * A_01
+			 T = Z_00 * R
+			 X = -T
+			 Y = A_10 * X
+			 Q = Y + A_11
+			 Z_11 = invChol(Q)
+			 Z_01 = X * Z_11
+			 Z_10 = 0
+			 Z = [Z_00 Z_01
+				  Z_10 Z_11]
+			*/
+			
+			if(!Z.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::inv_chol(): non-empty matrix to write result!");				
+							
+			Z.set_params(A.get_params());
+			
+			Z.resize(A.nRows_orig, A.nCols_orig);
+			
+			if(A.lowest_level()){
+				
+				int n = A.nRows;
+				
+				// set Z to identity;
+				for(int i = 0; i < n; ++i) Z.submatrix[i*n + i] = 1.0;
+
+				Z.submatrix[0] = std::sqrt(1 / A.submatrix[0]);
+				
+				for (int i = 1; i < n; i++) {
+				  
+					Treal R;
+
+					for (int j = 0; j < i; j++){
+						
+						R = 0;
+						for (int k = 0; k < n; k++){
+							R += A.submatrix[k * n + j] * Z.submatrix[i * n + k];
+						}
+						
+						R *= Z.submatrix[j * n + j];
+						for (int k = 0; k < n; k++){
+							Z.submatrix[i * n + k] -= Z.submatrix[j * n + k] * R;
+						}
+					}
+					
+					R = 0;
+					for (int k = 0; k < n; k++){
+						R += A.submatrix[k * n + i] * Z.submatrix[i * n + k];
+					}
+					
+					R = std::sqrt(1 / R);
+					for (int k = 0; k < n; k++){
+						Z.submatrix[i * n + k] *= R;
+					}
+			   }
+			   
+			   return;
+			   
+			}
+			
+			// Z_00 = invChol(A_00)
+			if(A.children[0] != NULL){
+				Z.children[0] = new HierarchicalBlockSparseMatrix<Treal>();
+				Z.children[0]->parent = &Z;				
+				inv_chol(*A.children[0], *Z.children[0]);
+			}
+			
+			if(Z.children[0] == NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::inv_chol(): smth went wrong since Z_00 is NULL!");				
+			
+			// R = Z_00^T * A_01
+			HierarchicalBlockSparseMatrix<Treal> R;
+			
+			if(A.children[2] != NULL){
+				multiply(*Z.children[0], true, *A.children[2], false, R);
+			}
+			else{ // othervise it is a matrix of certain size, but without elements
+				R.set_params(A.get_params());
+				R.resize(A.nRows/2, A.nCols/2);
+			}			
+			
+			// T = Z_00 * R
+			HierarchicalBlockSparseMatrix<Treal> T;
+			
+			multiply(*Z.children[0], false, R, false, T);
+			
+			// X = -T
+			HierarchicalBlockSparseMatrix<Treal> X;
+			
+			X.rescale(T,-1.0);
+			
+			// Y = A_10 * X
+			HierarchicalBlockSparseMatrix<Treal> Y;
+			
+			if(A.children[1] != NULL){
+				multiply(*A.children[1], false, X, false, Y);
+			}
+			else{
+				Y.set_params(A.get_params());
+				Y.resize(A.nRows/2, A.nCols/2);
+			}
+			
+			// Q = Y + A_11
+			HierarchicalBlockSparseMatrix<Treal> Q;
+			if(A.children[3] != NULL) add(Y, *A.children[3], Q);
+			else{
+				Q.copy(Y);
+			}
+			
+			// Z_11 = invChol(Q)
+			if(Z.children[3] == NULL){
+				Z.children[3] = new HierarchicalBlockSparseMatrix<Treal>();
+				inv_chol(Q, *Z.children[3]);
+			}
+			else throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::inv_chol(): smth went wrong since Z_11 was not NULL!");	
+			
+			// Z_01 = X * Z_11
+			if(Z.children[2] == NULL ){
+				Z.children[2] = new HierarchicalBlockSparseMatrix<Treal>();
+				multiply(X, false, *Z.children[3], false, *Z.children[2]);
+			}
+			else std::runtime_error("Error in HierarchicalBlockSparseMatrix::inv_chol(): smth went wrong since Z_01 was not NULL!");
+			
+			// Z_10 = 0 
+			assert(Z.children[1] == NULL);
+			
+			return;
+			
 		}
 			
 } /* end namespace hbsm */

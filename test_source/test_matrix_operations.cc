@@ -211,6 +211,8 @@ static int test_operations() {
   
 	verify_that_matrices_are_equal(C, Cref);  
 
+
+
 	// Test multiply()
 	
 	MatrixType D;
@@ -310,7 +312,28 @@ static int test_operations() {
 	}
 	
 	verify_that_matrices_are_equal(AtxDt, AtxDt_ref);
-/*
+	
+	
+	
+	// test rescale
+	
+	MatrixType minus_A;
+	minus_A.rescale(A, -1.0);
+	
+	MatrixType minus_A_ref;
+	minus_A_ref.set_params(param);
+	minus_A_ref.resize(2, 3);
+	{
+		SparseMatrix tmp;
+		set_row(tmp, 0, -2, -3, -5);
+		set_row(tmp, 1, -0, -1, -2);
+		tmp.assign(minus_A_ref);
+	}
+	
+	verify_that_matrices_are_equal(minus_A, minus_A_ref);
+	
+	
+
   if (verbose)
     std::cout << "Test inv_chol" << std::endl;
   // Test inv_chol()
@@ -339,9 +362,11 @@ static int test_operations() {
       set_row(tmp, 3, 0,                  0,                  0,                  0.433761784290076);
       tmp.assign(Z_ref);    
     }
+
+	
     verify_that_matrices_are_almost_equal(Z, Z_ref, 1e-10);
   }
-
+/*
   test_symm_multiply<MatrixType>(param);  
   test_symm_square<MatrixType>(param);
   test_symm_rk<MatrixType>(param);
