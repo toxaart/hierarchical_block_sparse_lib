@@ -52,6 +52,8 @@ static void test_symm_multiply(typename MatrixType::Params const & param) {
   }
   if (verbose)
     std::cout << "Test symm_multiply 1" << std::endl;
+	
+	
   // A * B
   MatrixType AxB;
   MatrixType::symm_multiply(A, true, B, false, AxB);
@@ -67,7 +69,11 @@ static void test_symm_multiply(typename MatrixType::Params const & param) {
     set_row(tmp, 4,    32,    34,    39,    43,    11,    45,    30);
     tmp.assign(AxBref);
   }
+  
+  
   verify_that_matrices_are_equal(AxB, AxBref);
+  /*
+  
   if (verbose)
     std::cout << "Test symm_multiply 2" << std::endl;
   // C * A
@@ -82,7 +88,7 @@ static void test_symm_multiply(typename MatrixType::Params const & param) {
     set_row(tmp, 1,   40,    31,    21,    47,    42);
     tmp.assign(CxAref);
   }
-  verify_that_matrices_are_equal(CxA, CxAref);
+  verify_that_matrices_are_equal(CxA, CxAref);*/
 }
 
 template<typename MatrixType>
@@ -366,8 +372,9 @@ static int test_operations() {
 	
     verify_that_matrices_are_almost_equal(Z, Z_ref, 1e-10);
   }
-/*
+
   test_symm_multiply<MatrixType>(param);  
+  /*
   test_symm_square<MatrixType>(param);
   test_symm_rk<MatrixType>(param);
 
