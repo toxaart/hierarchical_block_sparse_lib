@@ -112,6 +112,7 @@ static void test_symm_square(typename MatrixType::Params const & param) {
   // A * A
   MatrixType AxA;
   MatrixType::symm_square(A, AxA);
+  
   MatrixType AxAref;
   AxAref.set_params(param);
   AxAref.resize(5, 5);
@@ -124,6 +125,7 @@ static void test_symm_square(typename MatrixType::Params const & param) {
     set_row(tmp, 4,     0,     0,     0,     0,    43);
     tmp.assign(AxAref);
   }
+
   verify_that_matrices_are_equal(AxA, AxAref);
 }
 
@@ -176,7 +178,7 @@ template<typename MatrixType>
 static int test_operations() {
   typename MatrixType::Params param;
 #if 1  
-	param.blocksize = 4; // Only for block sparse matrix
+	param.blocksize = 2; // Only for block sparse matrix
 #endif
   
   // Test add()
@@ -191,6 +193,17 @@ static int test_operations() {
 		tmp.assign(A);
 	}
 		
+		
+	MatrixType AT_ref;
+	AT_ref.set_params(param);
+	AT_ref.resize(3, 2);	
+	{
+		SparseMatrix tmp;
+		set_row(tmp, 0, 2, 0);
+		set_row(tmp, 1, 3, 1);
+		set_row(tmp, 2, 5, 2);
+		tmp.assign(AT_ref);
+	}	
 
 	MatrixType B;
 	B.set_params(param);
@@ -452,11 +465,11 @@ static int test_operations() {
     verify_that_matrices_are_almost_equal(Z, Z_ref, 1e-10);
   }
 
-  param.blocksize = 3;
   test_symm_multiply<MatrixType>(param);  
-  /*
   test_symm_square<MatrixType>(param);
-  test_symm_rk<MatrixType>(param);
+ /*
+
+ test_symm_rk<MatrixType>(param);
 
 
   if (verbose)
