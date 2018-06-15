@@ -161,16 +161,18 @@ namespace hbsm {
 
 			void write_to_buffer ( char * dataBuffer, size_t const bufferSize ) const;	
 			void assign_from_buffer ( char * dataBuffer, size_t const bufferSize );		
-            void copy(const HierarchicalBlockSparseMatrix<Treal> & other);
+            void copy(const HierarchicalBlockSparseMatrix<Treal> & other, size_t* no_of_allocs = NULL);
 			
             void add_scaled_identity( HierarchicalBlockSparseMatrix<Treal> const & other, Treal alpha);
             
 			static void add(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> const & B, 
-																HierarchicalBlockSparseMatrix<Treal> & C);
+																HierarchicalBlockSparseMatrix<Treal> & C,
+																size_t* no_of_allocs = NULL);
 																
 			static void multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
                         HierarchicalBlockSparseMatrix<Treal>& C,
-						size_t* no_of_block_multiplies = NULL);		
+						size_t* no_of_block_multiplies = NULL,
+						size_t* no_of_allocs = NULL);		
 						
 			void rescale(HierarchicalBlockSparseMatrix<Treal> const& other, Treal alpha);
 	
@@ -1186,7 +1188,7 @@ namespace hbsm {
         
         
     template<class Treal> 
-		void HierarchicalBlockSparseMatrix<Treal>::copy(const HierarchicalBlockSparseMatrix<Treal> &other) {
+		void HierarchicalBlockSparseMatrix<Treal>::copy(const HierarchicalBlockSparseMatrix<Treal> &other, size_t* no_of_allocs) {
 			
             if(this == &other) return; // no need to copy itself to itself
             
@@ -1195,6 +1197,7 @@ namespace hbsm {
                 return;
             }
 			
+			if(other.get_level() == 0 && no_of_allocs != NULL) *no_of_allocs = 0;
 			            
             set_params(other.get_params());
             resize(other.nRows_orig,other.nCols_orig);
@@ -1214,7 +1217,8 @@ namespace hbsm {
                 
                 if(other.children[i] != NULL){
                     children[i] = new HierarchicalBlockSparseMatrix<Treal>();
-                    children[i]->copy(*other.children[i]);
+					if(no_of_allocs != 0) (*no_of_allocs)++;
+                    children[i]->copy(*other.children[i], no_of_allocs);
 					children[i]->parent = this;
                 }
                 
@@ -1412,7 +1416,8 @@ namespace hbsm {
 	template<class Treal>
 		void HierarchicalBlockSparseMatrix<Treal>::add(HierarchicalBlockSparseMatrix<Treal> const & A,
 				       HierarchicalBlockSparseMatrix<Treal> const & B,
-				       HierarchicalBlockSparseMatrix<Treal> & C){
+				       HierarchicalBlockSparseMatrix<Treal> & C,
+					   size_t* no_of_allocs){
 		
 						   
 
@@ -1426,6 +1431,7 @@ namespace hbsm {
                 
             C.resize(A.nRows_orig,A.nCols_orig);
 			
+			if(A.get_level() == 0 && no_of_allocs != NULL) *no_of_allocs = 0;
 			
 			if(A.lowest_level()){
 				
@@ -1448,7 +1454,8 @@ namespace hbsm {
 					
 					C.children[i] = new HierarchicalBlockSparseMatrix<Treal>();
 					C.children[i]->parent = &C;
-					add(*A.children[i], *B.children[i], *C.children[i]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+					add(*A.children[i], *B.children[i], *C.children[i], no_of_allocs);
 					
 				} 
 				
@@ -1458,8 +1465,8 @@ namespace hbsm {
 					
 					C.children[i] = new HierarchicalBlockSparseMatrix<Treal>();
 					C.children[i]->parent = &C;
-					
-					C.children[i]->copy(*B.children[i]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+					C.children[i]->copy(*B.children[i], no_of_allocs);
 					
 				}
 				
@@ -1469,8 +1476,8 @@ namespace hbsm {
 					
 					C.children[i] = new HierarchicalBlockSparseMatrix<Treal>();
 					C.children[i]->parent = &C;
-					
-					C.children[i]->copy(*A.children[i]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+					C.children[i]->copy(*A.children[i], no_of_allocs);
 					
 				}
 				
@@ -1559,7 +1566,7 @@ namespace hbsm {
 		
 	template<class Treal>
 		void HierarchicalBlockSparseMatrix<Treal>::multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
-                        HierarchicalBlockSparseMatrix<Treal>& C, size_t* no_of_block_multiplies){
+                        HierarchicalBlockSparseMatrix<Treal>& C, size_t* no_of_block_multiplies, size_t* no_of_allocs){
 		      
                             
 			if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): non-empty matrix to write result!");				
@@ -1597,6 +1604,7 @@ namespace hbsm {
 			adjust_sizes(A,B);
 			
 			if(A.get_level() == 0 && no_of_block_multiplies != NULL) *no_of_block_multiplies = 0;
+			if(A.get_level() == 0 && no_of_allocs != NULL) *no_of_allocs = 0;
 						
 			if(A.lowest_level()){
 							
@@ -1661,7 +1669,7 @@ namespace hbsm {
 			}
 			
 			
-
+			
 			
 
 			if(!tA && !tB){
@@ -1673,14 +1681,14 @@ namespace hbsm {
 				
 				
 				HierarchicalBlockSparseMatrix<Treal> A0xB0;
-				if(A.children[0] != NULL && B.children[0] != NULL) multiply(*A.children[0], tA, *B.children[0], tB, A0xB0, no_of_block_multiplies);
+				if(A.children[0] != NULL && B.children[0] != NULL) multiply(*A.children[0], tA, *B.children[0], tB, A0xB0, no_of_block_multiplies, no_of_allocs);
 				else{
 					A0xB0.set_params(A.get_params());
 					A0xB0.resize(A.nRows/2, B.nCols/2);
 				}
 
 				HierarchicalBlockSparseMatrix<Treal> A2xB1;
-				if(A.children[2] != NULL && B.children[1] != NULL) multiply(*A.children[2], tA, *B.children[1], tB, A2xB1, no_of_block_multiplies);
+				if(A.children[2] != NULL && B.children[1] != NULL) multiply(*A.children[2], tA, *B.children[1], tB, A2xB1, no_of_block_multiplies, no_of_allocs);
 				else{
 					A2xB1.set_params(A.get_params());
 					A2xB1.resize(A.nRows/2, B.nCols/2);
@@ -1690,12 +1698,13 @@ namespace hbsm {
                 if(A0xB0.children_exist() || A2xB1.children_exist() || A2xB1.lowest_level()){
                     C.children[0] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[0]->parent = &C;	
-                    add(A0xB0, A2xB1, *C.children[0]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A0xB0, A2xB1, *C.children[0], no_of_allocs);
                 }
 				
 				
 				HierarchicalBlockSparseMatrix<Treal> A1xB0;
-				if(A.children[1] != NULL && B.children[0] != NULL) multiply(*A.children[1], tA, *B.children[0], tB, A1xB0, no_of_block_multiplies);
+				if(A.children[1] != NULL && B.children[0] != NULL) multiply(*A.children[1], tA, *B.children[0], tB, A1xB0, no_of_block_multiplies, no_of_allocs);
 				else{
 					A1xB0.set_params(A.get_params());
 					A1xB0.resize(A.nRows/2, B.nCols/2);
@@ -1703,7 +1712,7 @@ namespace hbsm {
 				
 				
 				HierarchicalBlockSparseMatrix<Treal> A3xB1;
-				if(A.children[3] != NULL && B.children[1] != NULL) multiply(*A.children[3], tA, *B.children[1], tB, A3xB1, no_of_block_multiplies);
+				if(A.children[3] != NULL && B.children[1] != NULL) multiply(*A.children[3], tA, *B.children[1], tB, A3xB1, no_of_block_multiplies, no_of_allocs);
 				else{
 					A3xB1.set_params(A.get_params());
 					A3xB1.resize(A.nRows/2, B.nCols/2);
@@ -1713,19 +1722,20 @@ namespace hbsm {
                 if(A1xB0.children_exist() || A3xB1.children_exist() || A3xB1.lowest_level()){
                     C.children[1] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[1]->parent = &C;
-                    add(A1xB0, A3xB1, *C.children[1]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A1xB0, A3xB1, *C.children[1], no_of_allocs);
                 }
             
 				
 				HierarchicalBlockSparseMatrix<Treal> A0xB2;
-				if(A.children[0] != NULL && B.children[2] != NULL) multiply(*A.children[0], tA, *B.children[2], tB, A0xB2, no_of_block_multiplies);
+				if(A.children[0] != NULL && B.children[2] != NULL) multiply(*A.children[0], tA, *B.children[2], tB, A0xB2, no_of_block_multiplies, no_of_allocs);
 				else{
 					A0xB2.set_params(A.get_params());
 					A0xB2.resize(A.nRows/2, B.nCols/2);
 				}
 				
 				HierarchicalBlockSparseMatrix<Treal> A2xB3;
-				if(A.children[2] != NULL && B.children[3] != NULL) multiply(*A.children[2], tA, *B.children[3], tB, A2xB3, no_of_block_multiplies);
+				if(A.children[2] != NULL && B.children[3] != NULL) multiply(*A.children[2], tA, *B.children[3], tB, A2xB3, no_of_block_multiplies, no_of_allocs);
 				else{
 					A2xB3.set_params(A.get_params());
 					A2xB3.resize(A.nRows/2, B.nCols/2);
@@ -1736,18 +1746,19 @@ namespace hbsm {
                 if(A0xB2.children_exist() || A2xB3.children_exist() || A2xB3.lowest_level()){
                     C.children[2] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[2]->parent = &C;
-                    add(A0xB2, A2xB3, *C.children[2]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A0xB2, A2xB3, *C.children[2], no_of_allocs);
                 }								
 				
 				HierarchicalBlockSparseMatrix<Treal> A1xB2;
-				if(A.children[1] != NULL && B.children[2] != NULL) multiply(*A.children[1], tA, *B.children[2], tB, A1xB2, no_of_block_multiplies);
+				if(A.children[1] != NULL && B.children[2] != NULL) multiply(*A.children[1], tA, *B.children[2], tB, A1xB2, no_of_block_multiplies, no_of_allocs);
 				else{
 					A1xB2.set_params(A.get_params());
 					A1xB2.resize(A.nRows/2, B.nCols/2);
 				}
 				
 				HierarchicalBlockSparseMatrix<Treal> A3xB3;
-				if(A.children[3] != NULL && B.children[3] != NULL) multiply(*A.children[3], tA, *B.children[3], tB, A3xB3, no_of_block_multiplies);
+				if(A.children[3] != NULL && B.children[3] != NULL) multiply(*A.children[3], tA, *B.children[3], tB, A3xB3, no_of_block_multiplies, no_of_allocs);
 				else{
 					A3xB3.set_params(A.get_params());
 					A3xB3.resize(A.nRows/2, B.nCols/2);
@@ -1757,8 +1768,9 @@ namespace hbsm {
 				//if(C.children[3] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
 				if(A1xB2.children_exist() || A3xB3.children_exist() || A3xB3.lowest_level()){
                     C.children[3] = new HierarchicalBlockSparseMatrix<Treal>();
-                    C.children[3]->parent = &C;				
-                    add(A1xB2, A3xB3, *C.children[3]);
+                    C.children[3]->parent = &C;			
+					if(no_of_allocs != NULL) (*no_of_allocs)++;	
+                    add(A1xB2, A3xB3, *C.children[3], no_of_allocs);
                 }
 				
 				return;
@@ -1772,7 +1784,7 @@ namespace hbsm {
 				// C3 = A1xB^T + A3xB3^T
 				
 				HierarchicalBlockSparseMatrix<Treal> A0xB0T;
-				if(A.children[0] != NULL && B.children[0] != NULL) multiply(*A.children[0], tA, *B.children[0], tB, A0xB0T, no_of_block_multiplies);
+				if(A.children[0] != NULL && B.children[0] != NULL) multiply(*A.children[0], tA, *B.children[0], tB, A0xB0T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A0xB0T.set_params(A.get_params());
 					A0xB0T.resize(A.nRows/2, B.nCols/2);
@@ -1780,7 +1792,7 @@ namespace hbsm {
 
 				
 				HierarchicalBlockSparseMatrix<Treal> A2xB2T;
-				if(A.children[2] != NULL && B.children[2] != NULL) multiply(*A.children[2], tA, *B.children[2], tB, A2xB2T, no_of_block_multiplies);
+				if(A.children[2] != NULL && B.children[2] != NULL) multiply(*A.children[2], tA, *B.children[2], tB, A2xB2T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A2xB2T.set_params(A.get_params());
 					A2xB2T.resize(A.nRows/2, B.nCols/2);
@@ -1791,12 +1803,13 @@ namespace hbsm {
                 if(A0xB0T.children_exist() || A2xB2T.children_exist() || A2xB2T.lowest_level()){
                     C.children[0] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[0]->parent = &C;	
-                    add(A0xB0T, A2xB2T, *C.children[0]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A0xB0T, A2xB2T, *C.children[0], no_of_allocs);
                 }
 				
 	
 				HierarchicalBlockSparseMatrix<Treal> A1xB0T;
-				if(A.children[1] != NULL && B.children[0] != NULL) multiply(*A.children[1], tA, *B.children[0], tB, A1xB0T, no_of_block_multiplies);
+				if(A.children[1] != NULL && B.children[0] != NULL) multiply(*A.children[1], tA, *B.children[0], tB, A1xB0T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A1xB0T.set_params(A.get_params());
 					A1xB0T.resize(A.nRows/2, B.nCols/2);
@@ -1804,7 +1817,7 @@ namespace hbsm {
 
 				
 				HierarchicalBlockSparseMatrix<Treal> A3xB2T;
-				if(A.children[3] != NULL && B.children[2] != NULL) multiply(*A.children[3], tA, *B.children[2], tB, A3xB2T, no_of_block_multiplies);
+				if(A.children[3] != NULL && B.children[2] != NULL) multiply(*A.children[3], tA, *B.children[2], tB, A3xB2T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A3xB2T.set_params(A.get_params());
 					A3xB2T.resize(A.nRows/2, B.nCols/2);
@@ -1815,12 +1828,13 @@ namespace hbsm {
                 if(A1xB0T.children_exist() || A3xB2T.children_exist() || A3xB2T.lowest_level()){
                     C.children[1] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[1]->parent = &C;	
-                    add(A1xB0T, A3xB2T, *C.children[1]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A1xB0T, A3xB2T, *C.children[1], no_of_allocs);
                 }
 				
 				
 				HierarchicalBlockSparseMatrix<Treal> A0xB1T;
-				if(A.children[0] != NULL && B.children[1] != NULL) multiply(*A.children[0], tA, *B.children[1], tB, A0xB1T, no_of_block_multiplies);
+				if(A.children[0] != NULL && B.children[1] != NULL) multiply(*A.children[0], tA, *B.children[1], tB, A0xB1T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A0xB1T.set_params(A.get_params());
 					A0xB1T.resize(A.nRows/2, B.nCols/2);
@@ -1828,7 +1842,7 @@ namespace hbsm {
 
 				
 				HierarchicalBlockSparseMatrix<Treal> A2xB3T;
-				if(A.children[2] != NULL && B.children[3] != NULL) multiply(*A.children[2], tA, *B.children[3], tB, A2xB3T, no_of_block_multiplies);
+				if(A.children[2] != NULL && B.children[3] != NULL) multiply(*A.children[2], tA, *B.children[3], tB, A2xB3T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A2xB3T.set_params(A.get_params());
 					A2xB3T.resize(A.nRows/2, B.nCols/2);
@@ -1839,12 +1853,13 @@ namespace hbsm {
                 if(A0xB1T.children_exist() || A2xB3T.children_exist() || A2xB3T.lowest_level()){
                     C.children[2] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[2]->parent = &C;	
-                    add(A0xB1T, A2xB3T, *C.children[2]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A0xB1T, A2xB3T, *C.children[2], no_of_allocs);
                 }
 										
 				
 				HierarchicalBlockSparseMatrix<Treal> A1xB1T;
-				if(A.children[1] != NULL && B.children[1] != NULL) multiply(*A.children[1], tA, *B.children[1], tB, A1xB1T, no_of_block_multiplies);
+				if(A.children[1] != NULL && B.children[1] != NULL) multiply(*A.children[1], tA, *B.children[1], tB, A1xB1T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A1xB1T.set_params(A.get_params());
 					A1xB1T.resize(A.nRows/2, B.nCols/2);
@@ -1852,7 +1867,7 @@ namespace hbsm {
 
 				
 				HierarchicalBlockSparseMatrix<Treal> A3xB3T;
-				if(A.children[3] != NULL && B.children[3] != NULL) multiply(*A.children[3], tA, *B.children[3], tB, A3xB3T, no_of_block_multiplies);
+				if(A.children[3] != NULL && B.children[3] != NULL) multiply(*A.children[3], tA, *B.children[3], tB, A3xB3T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A3xB3T.set_params(A.get_params());
 					A3xB3T.resize(A.nRows/2, B.nCols/2);
@@ -1863,7 +1878,8 @@ namespace hbsm {
                 if(A1xB1T.children_exist() || A3xB3T.children_exist() || A3xB3T.lowest_level()){
                     C.children[3] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[3]->parent = &C;	
-                    add(A1xB1T, A3xB3T, *C.children[3]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A1xB1T, A3xB3T, *C.children[3], no_of_allocs);
                 }
 				
 				return;
@@ -1879,7 +1895,7 @@ namespace hbsm {
 				
 				
 				HierarchicalBlockSparseMatrix<Treal> A0TxB0;
-				if(A.children[0] != NULL && B.children[0] != NULL) multiply(*A.children[0], tA, *B.children[0], tB, A0TxB0, no_of_block_multiplies);
+				if(A.children[0] != NULL && B.children[0] != NULL) multiply(*A.children[0], tA, *B.children[0], tB, A0TxB0, no_of_block_multiplies, no_of_allocs);
 				else{
 					A0TxB0.set_params(A.get_params());
 					A0TxB0.resize(A.nRows/2, B.nCols/2);
@@ -1887,7 +1903,7 @@ namespace hbsm {
 
 				
 				HierarchicalBlockSparseMatrix<Treal> A1TxB1;
-				if(A.children[1] != NULL && B.children[1] != NULL) multiply(*A.children[1], tA, *B.children[1], tB, A1TxB1, no_of_block_multiplies);
+				if(A.children[1] != NULL && B.children[1] != NULL) multiply(*A.children[1], tA, *B.children[1], tB, A1TxB1, no_of_block_multiplies, no_of_allocs);
 				else{
 					A1TxB1.set_params(A.get_params());
 					A1TxB1.resize(A.nRows/2, B.nCols/2);
@@ -1898,13 +1914,14 @@ namespace hbsm {
                 if(A0TxB0.children_exist() || A1TxB1.children_exist() || A1TxB1.lowest_level()){
                     C.children[0] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[0]->parent = &C;	
-                    add(A0TxB0, A1TxB1, *C.children[0]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A0TxB0, A1TxB1, *C.children[0], no_of_allocs);
                 }
 					
 			
 				
 				HierarchicalBlockSparseMatrix<Treal> A2TxB0;
-				if(A.children[2] != NULL && B.children[0] != NULL) multiply(*A.children[2], tA, *B.children[0], tB, A2TxB0, no_of_block_multiplies);
+				if(A.children[2] != NULL && B.children[0] != NULL) multiply(*A.children[2], tA, *B.children[0], tB, A2TxB0, no_of_block_multiplies, no_of_allocs);
 				else{
 					A2TxB0.set_params(A.get_params());
 					A2TxB0.resize(A.nRows/2, B.nCols/2);
@@ -1912,7 +1929,7 @@ namespace hbsm {
 
 				
 				HierarchicalBlockSparseMatrix<Treal> A3TxB1;
-				if(A.children[3] != NULL && B.children[1] != NULL) multiply(*A.children[3], tA, *B.children[1], tB, A3TxB1, no_of_block_multiplies);
+				if(A.children[3] != NULL && B.children[1] != NULL) multiply(*A.children[3], tA, *B.children[1], tB, A3TxB1, no_of_block_multiplies, no_of_allocs);
 				else{
 					A3TxB1.set_params(A.get_params());
 					A3TxB1.resize(A.nRows/2, B.nCols/2);
@@ -1923,13 +1940,14 @@ namespace hbsm {
                 if(A2TxB0.children_exist() || A3TxB1.children_exist() || A3TxB1.lowest_level()){
                     C.children[1] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[1]->parent = &C;	
-                    add(A2TxB0, A3TxB1, *C.children[1]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A2TxB0, A3TxB1, *C.children[1], no_of_allocs);
                 }
 				
 					
 				
 				HierarchicalBlockSparseMatrix<Treal> A0TxB2;
-				if(A.children[0] != NULL && B.children[2] != NULL) multiply(*A.children[0], tA, *B.children[2], tB, A0TxB2, no_of_block_multiplies);
+				if(A.children[0] != NULL && B.children[2] != NULL) multiply(*A.children[0], tA, *B.children[2], tB, A0TxB2, no_of_block_multiplies, no_of_allocs);
 				else{
 					A0TxB2.set_params(A.get_params());
 					A0TxB2.resize(A.nRows/2, B.nCols/2);
@@ -1937,7 +1955,7 @@ namespace hbsm {
 
 				
 				HierarchicalBlockSparseMatrix<Treal> A1TxB3;
-				if(A.children[1] != NULL && B.children[3] != NULL) multiply(*A.children[1], tA, *B.children[3], tB, A1TxB3, no_of_block_multiplies);
+				if(A.children[1] != NULL && B.children[3] != NULL) multiply(*A.children[1], tA, *B.children[3], tB, A1TxB3, no_of_block_multiplies, no_of_allocs);
 				else{
 					A1TxB3.set_params(A.get_params());
 					A1TxB3.resize(A.nRows/2, B.nCols/2);
@@ -1948,13 +1966,14 @@ namespace hbsm {
                 if(A0TxB2.children_exist() || A1TxB3.children_exist() || A1TxB3.lowest_level()){
                     C.children[2] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[2]->parent = &C;	
-                    add(A0TxB2, A1TxB3, *C.children[2]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A0TxB2, A1TxB3, *C.children[2], no_of_allocs);
                 }
 				
 					
 				
 				HierarchicalBlockSparseMatrix<Treal> A2TxB2;
-				if(A.children[2] != NULL && B.children[2] != NULL) multiply(*A.children[2], tA, *B.children[2], tB, A2TxB2, no_of_block_multiplies);
+				if(A.children[2] != NULL && B.children[2] != NULL) multiply(*A.children[2], tA, *B.children[2], tB, A2TxB2, no_of_block_multiplies, no_of_allocs);
 				else{
 					A2TxB2.set_params(A.get_params());
 					A2TxB2.resize(A.nRows/2, B.nCols/2);
@@ -1962,7 +1981,7 @@ namespace hbsm {
 
 				
 				HierarchicalBlockSparseMatrix<Treal> A3TxB3;
-				if(A.children[3] != NULL && B.children[3] != NULL) multiply(*A.children[3], tA, *B.children[3], tB, A3TxB3, no_of_block_multiplies);
+				if(A.children[3] != NULL && B.children[3] != NULL) multiply(*A.children[3], tA, *B.children[3], tB, A3TxB3, no_of_block_multiplies, no_of_allocs);
 				else{
 					A3TxB3.set_params(A.get_params());
 					A3TxB3.resize(A.nRows/2, B.nCols/2);
@@ -1973,7 +1992,8 @@ namespace hbsm {
                 if(A2TxB2.children_exist() || A3TxB3.children_exist() || A3TxB3.lowest_level()){
                     C.children[3] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[3]->parent = &C;	
-                    add(A2TxB2, A3TxB3, *C.children[3]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A2TxB2, A3TxB3, *C.children[3], no_of_allocs);
                 }
 				
 				
@@ -1989,7 +2009,7 @@ namespace hbsm {
 				
 			
 				HierarchicalBlockSparseMatrix<Treal> A0TxB0T;
-				if(A.children[0] != NULL && B.children[0] != NULL) multiply(*A.children[0], tA, *B.children[0], tB, A0TxB0T, no_of_block_multiplies);
+				if(A.children[0] != NULL && B.children[0] != NULL) multiply(*A.children[0], tA, *B.children[0], tB, A0TxB0T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A0TxB0T.set_params(A.get_params());
 					A0TxB0T.resize(A.nRows/2, B.nCols/2);
@@ -1997,7 +2017,7 @@ namespace hbsm {
 
 				
 				HierarchicalBlockSparseMatrix<Treal> A1TxB2T;
-				if(A.children[1] != NULL && B.children[2] != NULL) multiply(*A.children[1], tA, *B.children[2], tB, A1TxB2T, no_of_block_multiplies);
+				if(A.children[1] != NULL && B.children[2] != NULL) multiply(*A.children[1], tA, *B.children[2], tB, A1TxB2T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A1TxB2T.set_params(A.get_params());
 					A1TxB2T.resize(A.nRows/2, B.nCols/2);
@@ -2008,12 +2028,13 @@ namespace hbsm {
                 if(A0TxB0T.children_exist() || A1TxB2T.children_exist() || A1TxB2T.lowest_level()){
                     C.children[0] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[0]->parent = &C;	
-                    add(A0TxB0T, A1TxB2T, *C.children[0]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A0TxB0T, A1TxB2T, *C.children[0], no_of_allocs);
                 }
 					
 				
 				HierarchicalBlockSparseMatrix<Treal> A2TxB0T;
-				if(A.children[2] != NULL && B.children[0] != NULL) multiply(*A.children[2], tA, *B.children[0], tB, A2TxB0T, no_of_block_multiplies);
+				if(A.children[2] != NULL && B.children[0] != NULL) multiply(*A.children[2], tA, *B.children[0], tB, A2TxB0T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A2TxB0T.set_params(A.get_params());
 					A2TxB0T.resize(A.nRows/2, B.nCols/2);
@@ -2021,7 +2042,7 @@ namespace hbsm {
 
 				
 				HierarchicalBlockSparseMatrix<Treal> A3TxB2T;
-				if(A.children[3] != NULL && B.children[2] != NULL) multiply(*A.children[3], tA, *B.children[2], tB, A3TxB2T, no_of_block_multiplies);
+				if(A.children[3] != NULL && B.children[2] != NULL) multiply(*A.children[3], tA, *B.children[2], tB, A3TxB2T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A3TxB2T.set_params(A.get_params());
 					A3TxB2T.resize(A.nRows/2, B.nCols/2);
@@ -2032,12 +2053,13 @@ namespace hbsm {
                 if(A2TxB0T.children_exist() || A3TxB2T.children_exist() || A3TxB2T.lowest_level()){
                     C.children[1] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[1]->parent = &C;	
-                    add(A2TxB0T, A3TxB2T, *C.children[1]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A2TxB0T, A3TxB2T, *C.children[1], no_of_allocs);
                 }
 				
 				
 				HierarchicalBlockSparseMatrix<Treal> A0TxB1T;
-				if(A.children[0] != NULL && B.children[1] != NULL) multiply(*A.children[0], tA, *B.children[1], tB, A0TxB1T, no_of_block_multiplies);
+				if(A.children[0] != NULL && B.children[1] != NULL) multiply(*A.children[0], tA, *B.children[1], tB, A0TxB1T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A0TxB1T.set_params(A.get_params());
 					A0TxB1T.resize(A.nRows/2, B.nCols/2);
@@ -2045,7 +2067,7 @@ namespace hbsm {
 
 				
 				HierarchicalBlockSparseMatrix<Treal> A1TxB3T;
-				if(A.children[1] != NULL && B.children[3] != NULL) multiply(*A.children[1], tA, *B.children[3], tB, A1TxB3T, no_of_block_multiplies);
+				if(A.children[1] != NULL && B.children[3] != NULL) multiply(*A.children[1], tA, *B.children[3], tB, A1TxB3T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A1TxB3T.set_params(A.get_params());
 					A1TxB3T.resize(A.nRows/2, B.nCols/2);
@@ -2056,12 +2078,13 @@ namespace hbsm {
                 if(A0TxB1T.children_exist() || A1TxB3T.children_exist() || A1TxB3T.lowest_level()){
                     C.children[2] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[2]->parent = &C;	
-                    add(A0TxB1T, A1TxB3T, *C.children[2]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A0TxB1T, A1TxB3T, *C.children[2], no_of_allocs);
                 }
 					
 		
 				HierarchicalBlockSparseMatrix<Treal> A2TxB1T;
-				if(A.children[2] != NULL && B.children[1] != NULL) multiply(*A.children[2], tA, *B.children[1], tB, A2TxB1T, no_of_block_multiplies);
+				if(A.children[2] != NULL && B.children[1] != NULL) multiply(*A.children[2], tA, *B.children[1], tB, A2TxB1T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A2TxB1T.set_params(A.get_params());
 					A2TxB1T.resize(A.nRows/2, B.nCols/2);
@@ -2069,7 +2092,7 @@ namespace hbsm {
 
 				
 				HierarchicalBlockSparseMatrix<Treal> A3TxB3T;
-				if(A.children[3] != NULL && B.children[3] != NULL) multiply(*A.children[3], tA, *B.children[3], tB, A3TxB3T, no_of_block_multiplies);
+				if(A.children[3] != NULL && B.children[3] != NULL) multiply(*A.children[3], tA, *B.children[3], tB, A3TxB3T, no_of_block_multiplies, no_of_allocs);
 				else{
 					A3TxB3T.set_params(A.get_params());
 					A3TxB3T.resize(A.nRows/2, B.nCols/2);
@@ -2080,7 +2103,8 @@ namespace hbsm {
                 if(A2TxB1T.children_exist() || A3TxB3T.children_exist() || A3TxB3T.lowest_level()){
                     C.children[3] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[3]->parent = &C;	
-                    add(A2TxB1T, A3TxB3T, *C.children[3]);
+					if(no_of_allocs != NULL) (*no_of_allocs)++;
+                    add(A2TxB1T, A3TxB3T, *C.children[3], no_of_allocs);
                 }
 				
 				return;
@@ -2910,8 +2934,8 @@ namespace hbsm {
             
             size_t element_counter = 0;
             
-            double lower_bound = -10.0;
-            double upper_bound = 10.0;
+            double lower_bound = -1.0;
+            double upper_bound = 1.0;
             std::uniform_real_distribution<double> unif(lower_bound,upper_bound);
             std::default_random_engine re;
             
