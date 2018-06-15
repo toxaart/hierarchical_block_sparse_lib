@@ -181,6 +181,8 @@ namespace hbsm {
             static void symm_rk(HierarchicalBlockSparseMatrix<Treal> const & A, bool transposed, HierarchicalBlockSparseMatrix<Treal> & C);
 			
 			static void transpose(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & C);
+            
+            static void allocate_work_buffers(int max_dimension, int max_blocksize){}
 			
 			void get_upper_triangle(HierarchicalBlockSparseMatrix<Treal> & A);
             
