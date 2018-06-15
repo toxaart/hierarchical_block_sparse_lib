@@ -179,6 +179,8 @@ namespace hbsm {
 			static void transpose(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & C);
 			
 			void get_upper_triangle(HierarchicalBlockSparseMatrix<Treal> & A);
+            
+            Treal get_trace() const;
 						
 			void print() const{
 				std::vector<int> rows, cols;
@@ -2775,6 +2777,29 @@ namespace hbsm {
             
         }
 			
+    template<class Treal>
+        Treal HierarchicalBlockSparseMatrix<Treal>::get_trace() const{
+            
+            if(lowest_level()){
+                
+                Treal trace = 0.0;
+                
+                for(int i = 0; i < blocksize; ++i){
+                    trace += submatrix[i * blocksize + i];
+                }
+
+                return trace;
+            }
+                
+            Treal trace = 0.0;
+            
+            if(children[0] != NULL) trace += children[0]->get_trace();
+            if(children[3] != NULL) trace += children[3]->get_trace();
+            
+            return trace;
+            
+        }
+            
 } /* end namespace hbsm */
 
 #endif

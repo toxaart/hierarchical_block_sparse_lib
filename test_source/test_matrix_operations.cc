@@ -473,7 +473,7 @@ static int test_operations() {
   test_symm_multiply<MatrixType>(param);  
   test_symm_square<MatrixType>(param);
   test_symm_rk<MatrixType>(param);
-/*
+
 
   if (verbose)
     std::cout << "Test get_trace" << std::endl;
@@ -488,11 +488,12 @@ static int test_operations() {
       set_row(tmp, 1, 0, 1, 2);
       set_row(tmp, 2, 5, 8, 9);
       tmp.assign(A);
-    }
+    }    
     if(A.get_trace() != 12.0)
       throw std::runtime_error("Error: get_trace() gave wrong value.");
   }
 
+/*
   if (verbose)
     std::cout << "Test set_to_identity" << std::endl;
   // Test set_to_identity()
