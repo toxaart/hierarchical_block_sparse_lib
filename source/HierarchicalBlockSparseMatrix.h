@@ -181,6 +181,8 @@ namespace hbsm {
 			void get_upper_triangle(HierarchicalBlockSparseMatrix<Treal> & A);
             
             Treal get_trace() const;
+            
+            static void set_to_identity(HierarchicalBlockSparseMatrix<Treal> & A, int nRows);
 						
 			void print() const{
 				std::vector<int> rows, cols;
@@ -2798,6 +2800,43 @@ namespace hbsm {
             
             return trace;
             
+        }
+        
+    template<class Treal>
+        void HierarchicalBlockSparseMatrix<Treal>::set_to_identity(HierarchicalBlockSparseMatrix<Treal> & A, int nRows) {
+            
+            // assume params are set
+            
+            A.clear();
+            
+            A.resize(nRows, nRows);
+            
+            if(A.lowest_level()){
+                
+                int blocksize = A.nRows;
+				int n = A.nRows;
+				if(A.on_bottom_boundary()) n = A.get_n_rows() % A.blocksize; // fill only necessary elements
+                
+                for(int i = 0; i < n; ++i) A.submatrix[i*blocksize + i] = 1.0;
+                    
+                return;    
+            }
+            
+            int blocksize = A.blocksize;
+           
+            A.children[0] = new HierarchicalBlockSparseMatrix();
+            A.children[0]->parent = &A;
+            A.children[0]->set_params(A.get_params());
+            set_to_identity(*A.children[0], A.nRows/2);
+        
+            if(A.children[0]->get_first_row_position() + blocksize >= A.get_n_rows() ) return;
+        
+            A.children[3] = new HierarchicalBlockSparseMatrix();
+            A.children[3]->parent = &A;
+            A.children[3]->set_params(A.get_params());
+            set_to_identity(*A.children[3], A.nRows/2);
+        
+            return;
         }
             
 } /* end namespace hbsm */

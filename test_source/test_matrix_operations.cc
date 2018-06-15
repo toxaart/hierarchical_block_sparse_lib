@@ -493,7 +493,7 @@ static int test_operations() {
       throw std::runtime_error("Error: get_trace() gave wrong value.");
   }
 
-/*
+
   if (verbose)
     std::cout << "Test set_to_identity" << std::endl;
   // Test set_to_identity()
@@ -501,10 +501,11 @@ static int test_operations() {
     MatrixType A;
     A.set_params(param);
     MatrixType::set_to_identity(A, 17);
+    
     if(A.get_trace() != 17.0)
       throw std::runtime_error("Error: set_to_identity() gave wrong result.");
   }
-
+/*
   if (verbose)
     std::cout << "Test get_nnz_diag_lowest_level" << std::endl;
   // Test get_nnz_diag_lowest_level()                                       
