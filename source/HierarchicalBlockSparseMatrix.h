@@ -173,6 +173,8 @@ namespace hbsm {
 						 HierarchicalBlockSparseMatrix<Treal> & C);
 			
 			static void symm_square(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & C);
+            
+            static void symm_rk(HierarchicalBlockSparseMatrix<Treal> const & A, bool transposed, HierarchicalBlockSparseMatrix<Treal> & C);
 			
 			static void transpose(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & C);
 			
@@ -2614,8 +2616,8 @@ namespace hbsm {
 
 			if(A.children[2] != NULL){
 				
-				HierarchicalBlockSparseMatrix<Treal> A2T;
-				transpose(*A.children[2], A2T);
+				//HierarchicalBlockSparseMatrix<Treal> A2T;
+				//transpose(*A.children[2], A2T);
 				
 				// C0 = A0xA0 + A2xA2^T
 				HierarchicalBlockSparseMatrix<Treal> A0xA0;
@@ -2627,7 +2629,7 @@ namespace hbsm {
 
 
 				HierarchicalBlockSparseMatrix<Treal> A2xA2T;
-				multiply(*A.children[2], false, A2T, false, A2xA2T);
+				multiply(*A.children[2], false, *A.children[2], true, A2xA2T);
 
 				HierarchicalBlockSparseMatrix<Treal> A2xA2T_U;
 				A2xA2T.get_upper_triangle(A2xA2T_U);
@@ -2694,7 +2696,7 @@ namespace hbsm {
 				
 				// C3 = A2TxA2 + A3xA3
 				HierarchicalBlockSparseMatrix<Treal> A2TxA2;
-				multiply(A2T, false, *A.children[2], false, A2TxA2);
+				multiply(*A.children[2], true, *A.children[2], false, A2TxA2);
 				
 				HierarchicalBlockSparseMatrix<Treal> A2TxA2_U;
 				A2TxA2.get_upper_triangle(A2TxA2_U);
@@ -2752,6 +2754,72 @@ namespace hbsm {
 			return;
 			
 		}
+        
+        
+    template<class Treal>
+        void HierarchicalBlockSparseMatrix<Treal>::symm_rk(HierarchicalBlockSparseMatrix<Treal> const & A, bool transposed, HierarchicalBlockSparseMatrix<Treal> & C){
+            
+            // C = A * A^T + C if transposed = false
+            // C = A^T*A + C otherwise
+            
+            // in the first case let A be MxN, then A * A^T will be MxM so C should be MxM
+            // in the second case C will be NxN
+            int M = A.nRows_orig;
+            int N = A.nCols_orig;
+            
+            // if C is empty, then ok, else its sizes should be correct by default!
+            if(!C.empty()){
+                
+                if(!transposed){
+                    if(C.nRows_orig != M || C.nCols_orig != M)  throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::symm_rk(): matrix C has bad sizes!");
+                }
+                else{
+                    if(C.nRows_orig != N || C.nCols_orig != N)  throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::symm_rk(): matrix C has bad sizes!");
+                }
+                
+            }
+            else{ // C is empty, need to resize
+                
+                 C.set_params(A.get_params());	
+                 
+                 if(!transposed) C.resize(M,M);
+                 else C.resize(N,N);
+                
+            }
+                
+
+           
+            
+
+            if(A.lowest_level()){
+                
+                real ZERO = 0.0;
+                real ONE  = 1.0;
+                
+                if(transposed){
+                    syrk("U", "T", &N, &M, &ONE, &A.submatrix[0], &M, &ZERO, &C.submatrix[0], &N);
+                }
+                else{
+                    syrk("U", "N", &M, &N, &ONE, &A.submatrix[0], &M, &ZERO, &C.submatrix[0], &M);
+                }
+                
+                return;
+            }
+            
+            
+            
+            if(!transposed){
+                
+
+                
+                
+                
+                
+                
+            }
+            
+            
+        }
 			
 } /* end namespace hbsm */
 
