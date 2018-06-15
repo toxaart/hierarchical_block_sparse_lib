@@ -40,7 +40,7 @@ namespace hbsm {
 		class HierarchicalBlockSparseMatrix{
 	public:
 			typedef Treal real;
-	public:
+	private:
 			int nRows; // number of rows on the current level
 			int nCols; // number of cols on the current level
 			int nRows_orig; // before 'virtual size' has been computed
