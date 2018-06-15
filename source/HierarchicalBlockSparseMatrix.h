@@ -22,6 +22,8 @@
 #include <cassert>
 #include <cmath>
 #include "gblas.h"
+#include <random>
+#include <algorithm>
 #if BUILD_WITH_CUDA
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
@@ -183,6 +185,8 @@ namespace hbsm {
 			static void transpose(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & C);
             
             static void allocate_work_buffers(int max_dimension, int max_blocksize){}
+            
+            void random_blocks(size_t nnz_blocks);
 			
 			void get_upper_triangle(HierarchicalBlockSparseMatrix<Treal> & A);
             
@@ -2863,6 +2867,92 @@ namespace hbsm {
             if(children[3] != NULL) nnz += children[3]->get_nnz_diag_lowest_level();
             
             return nnz;
+            
+        }
+        
+    template<class Treal>
+        void HierarchicalBlockSparseMatrix<Treal>::random_blocks(size_t nnz_blocks){
+            
+            // assume matrix is resized and we are at the top level;
+            
+            int M = nRows_orig;
+            int N = nCols_orig;
+            
+            int n_block_dim1 = M / blocksize;
+            if(M % blocksize > 0) n_block_dim1 += 1;
+            
+            int n_block_dim2 = N / blocksize;
+            if(N % blocksize > 0) n_block_dim2 += 1;
+            
+            int total_number_of_blocks = n_block_dim1 * n_block_dim2;
+            
+            if(nnz_blocks > total_number_of_blocks) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::random_blocks():too many blocks!");
+            
+            std::vector<int> v;
+            v.resize(total_number_of_blocks);
+            for(int i = 0; i < total_number_of_blocks; ++i) v[i] = i;
+            
+            std::random_device rd;
+            std::mt19937 g(rd());
+            std::shuffle(v.begin(), v.end(), g);
+            
+            std::vector<int> row_indices, col_indices; 
+            std::vector<Treal> values;
+            
+            row_indices.resize(nnz_blocks * blocksize * blocksize);
+            col_indices.resize(nnz_blocks * blocksize * blocksize);
+            values.resize(nnz_blocks * blocksize * blocksize);
+            
+            size_t element_counter = 0;
+            
+            double lower_bound = -10.0;
+            double upper_bound = 10.0;
+            std::uniform_real_distribution<double> unif(lower_bound,upper_bound);
+            std::default_random_engine re;
+            
+            for(int k = 0; k < nnz_blocks; ++k){
+                
+                int block_row_pos = v[k] / n_block_dim2;
+                int block_col_pos = v[k] % n_block_dim2;
+                
+                for(int i = 0; i < blocksize*blocksize; ++i){
+                    
+                    
+                    int element_row_pos = block_row_pos + i / blocksize;
+                    int element_col_pos = block_col_pos + i % blocksize;
+                    
+                    if(element_row_pos > get_n_rows()-1 || element_col_pos > get_n_cols()-1) continue;
+                    
+                    values[element_counter] = unif(re);
+                    row_indices[element_counter] = element_row_pos;
+                    col_indices[element_counter] = element_col_pos;
+                    
+                    element_counter++;
+                }
+                
+            }
+            
+            row_indices.resize(element_counter);
+            col_indices.resize(element_counter);
+            values.resize(element_counter);
+
+            for(int i = 0 ; i < row_indices.size(); ++i){
+                std::cout << row_indices[i] << " " << col_indices[i] << " " << values[i] << std::endl;
+            } 
+            
+            /*
+            std::cout << std::endl;
+            
+            HierarchicalBlockSparseMatrix<Treal> B;
+            B.set_params(get_params());
+            B.resize(M,N);
+            B.assign_from_vectors(row_indices, col_indices, values);
+            
+            B.print();
+            
+           //assign_from_vectors(row_indices, col_indices, values);
+            */
+            
             
         }
             

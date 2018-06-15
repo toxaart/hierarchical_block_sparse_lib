@@ -526,6 +526,18 @@ static int test_operations() {
       throw std::runtime_error("Error: get_nnz_diag_lowest_level() gave wrong value.");
   }
 
+/*
+  MatrixType X;
+  param.blocksize = 3;
+  X.set_params(param);
+  X.resize(6,6);
+  X.random_blocks(4);*/
+  
+  //X.print();
+  
+  //if(X.get_nnz() != 18) throw std::runtime_error("Error: random_blocks() gave wrong value.");
+  
+  
 
 /*
   if (verbose)
