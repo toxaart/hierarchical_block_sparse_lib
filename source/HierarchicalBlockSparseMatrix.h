@@ -2886,8 +2886,11 @@ namespace hbsm {
             
             int total_number_of_blocks = n_block_dim1 * n_block_dim2;
             
+			//std::cout << "Block space dim1 =  " << n_block_dim1 << ", dim2 = " << n_block_dim2 <<  std::endl;
+			//std::cout << "Total number of blocks: " << total_number_of_blocks << std::endl;
+			
             if(nnz_blocks > total_number_of_blocks) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::random_blocks():too many blocks!");
-            
+				
             std::vector<int> v;
             v.resize(total_number_of_blocks);
             for(int i = 0; i < total_number_of_blocks; ++i) v[i] = i;
@@ -2912,11 +2915,13 @@ namespace hbsm {
             
             for(int k = 0; k < nnz_blocks; ++k){
                 
-                int block_row_pos = v[k] / n_block_dim2;
-                int block_col_pos = v[k] % n_block_dim2;
+				//std::cout << "V[k] = " << v[k] <<std::endl; 
+                int block_row_pos = blocksize * (v[k] / n_block_dim1);
+                int block_col_pos = blocksize * (v[k] % n_block_dim1);
                 
+				//std::cout << "Block K = " << k << " is at " << block_row_pos << " " << block_col_pos << std::endl;
+				
                 for(int i = 0; i < blocksize*blocksize; ++i){
-                    
                     
                     int element_row_pos = block_row_pos + i / blocksize;
                     int element_col_pos = block_col_pos + i % blocksize;
@@ -2936,22 +2941,13 @@ namespace hbsm {
             col_indices.resize(element_counter);
             values.resize(element_counter);
 
-            for(int i = 0 ; i < row_indices.size(); ++i){
-                std::cout << row_indices[i] << " " << col_indices[i] << " " << values[i] << std::endl;
-            } 
+            //for(int i = 0 ; i < row_indices.size(); ++i){
+            //    std::cout << row_indices[i] << " " << col_indices[i] << " " << values[i] << std::endl;
+            //} 
+            //std::cout << std::endl;
             
-            /*
-            std::cout << std::endl;
+            assign_from_vectors(row_indices, col_indices, values);
             
-            HierarchicalBlockSparseMatrix<Treal> B;
-            B.set_params(get_params());
-            B.resize(M,N);
-            B.assign_from_vectors(row_indices, col_indices, values);
-            
-            B.print();
-            
-           //assign_from_vectors(row_indices, col_indices, values);
-            */
             
             
         }
