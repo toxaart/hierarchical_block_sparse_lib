@@ -505,7 +505,8 @@ static int test_operations() {
     if(A.get_trace() != 17.0)
       throw std::runtime_error("Error: set_to_identity() gave wrong result.");
   }
-/*
+
+
   if (verbose)
     std::cout << "Test get_nnz_diag_lowest_level" << std::endl;
   // Test get_nnz_diag_lowest_level()                                       
@@ -520,12 +521,13 @@ static int test_operations() {
       set_row(tmp, 2, 0, 0, 5);
       tmp.assign(A);
     }
+    
     if(A.get_nnz_diag_lowest_level() != 5)
       throw std::runtime_error("Error: get_nnz_diag_lowest_level() gave wrong value.");
   }
 
 
-
+/*
   if (verbose)
     std::cout << "Test get_row_sums" << std::endl;
   // Test get_col_sums()                                       

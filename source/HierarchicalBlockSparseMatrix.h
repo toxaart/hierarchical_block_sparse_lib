@@ -141,7 +141,11 @@ namespace hbsm {
 				     const std::vector<Treal> & values,
 					 bool use_max);	
 			Treal get_frob_squared() const;
-			int get_nnz() const;
+			
+            size_t get_nnz() const;
+            
+            size_t get_nnz_diag_lowest_level() const;
+            
 			void get_all_values(std::vector<int> & rows,
 						  std::vector<int> & cols,
 						  std::vector<Treal> & values) const;
@@ -653,7 +657,7 @@ namespace hbsm {
 		}
 		
 	template<class Treal> 
-		int HierarchicalBlockSparseMatrix<Treal>::get_nnz() const  {
+		size_t HierarchicalBlockSparseMatrix<Treal>::get_nnz() const  {
 			if(empty()) 
 				throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_nnz: empty matrix occured.");
 			
@@ -2824,19 +2828,40 @@ namespace hbsm {
             
             int blocksize = A.blocksize;
            
-            A.children[0] = new HierarchicalBlockSparseMatrix();
+            A.children[0] = new HierarchicalBlockSparseMatrix<Treal>();
             A.children[0]->parent = &A;
             A.children[0]->set_params(A.get_params());
             set_to_identity(*A.children[0], A.nRows/2);
         
-            if(A.children[0]->get_first_row_position() + blocksize >= A.get_n_rows() ) return;
+            if(A.children[0]->get_first_row_position() + A.children[0]->nRows >= A.get_n_rows() ) return;
         
-            A.children[3] = new HierarchicalBlockSparseMatrix();
+            A.children[3] = new HierarchicalBlockSparseMatrix<Treal>();
             A.children[3]->parent = &A;
             A.children[3]->set_params(A.get_params());
             set_to_identity(*A.children[3], A.nRows/2);
         
             return;
+        }
+        
+    template<class Treal>
+        size_t HierarchicalBlockSparseMatrix<Treal>::get_nnz_diag_lowest_level()const{
+            
+            if(lowest_level()){
+                
+				size_t n = nRows;
+                
+				if(on_bottom_boundary()) n = get_n_rows() % blocksize; // fill only necessary elements
+                
+                return n*n;
+            }
+            
+            size_t nnz = 0;
+            
+            if(children[0] != NULL) nnz += children[0]->get_nnz_diag_lowest_level();
+            if(children[3] != NULL) nnz += children[3]->get_nnz_diag_lowest_level();
+            
+            return nnz;
+            
         }
             
 } /* end namespace hbsm */
