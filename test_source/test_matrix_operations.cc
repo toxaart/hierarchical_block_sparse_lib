@@ -140,6 +140,9 @@ static void test_symm_rk(typename MatrixType::Params const & param) {
     set_row(tmp, 1, 0, 1, 2);
     tmp.assign(A);
   }
+
+  
+  
   if (verbose)
     std::cout << "Test symm_rk C = A * A'" << std::endl;
   // A * A'
@@ -154,6 +157,7 @@ static void test_symm_rk(typename MatrixType::Params const & param) {
     set_row(tmp, 1,     0,     5);
     tmp.assign(AxAtref);
   }
+
   verify_that_matrices_are_equal(AxAt, AxAtref);
 
   if (verbose)
@@ -171,7 +175,9 @@ static void test_symm_rk(typename MatrixType::Params const & param) {
     set_row(tmp, 2,     0,     0,    29);
     tmp.assign(AtxAref);
   }
+
   verify_that_matrices_are_equal(AtxA, AtxAref);
+  
 }
 
 template<typename MatrixType>
@@ -192,7 +198,6 @@ static int test_operations() {
 		set_row(tmp, 1, 0, 1, 2);
 		tmp.assign(A);
 	}
-		
 		
 	MatrixType AT_ref;
 	AT_ref.set_params(param);
@@ -467,10 +472,8 @@ static int test_operations() {
 
   test_symm_multiply<MatrixType>(param);  
   test_symm_square<MatrixType>(param);
- /*
-
- test_symm_rk<MatrixType>(param);
-
+  test_symm_rk<MatrixType>(param);
+/*
 
   if (verbose)
     std::cout << "Test get_trace" << std::endl;

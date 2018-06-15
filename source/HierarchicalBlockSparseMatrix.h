@@ -40,7 +40,7 @@ namespace hbsm {
 		class HierarchicalBlockSparseMatrix{
 	public:
 			typedef Treal real;
-	private:
+	public:
 			int nRows; // number of rows on the current level
 			int nCols; // number of cols on the current level
 			int nRows_orig; // before 'virtual size' has been computed
@@ -2616,9 +2616,6 @@ namespace hbsm {
 
 			if(A.children[2] != NULL){
 				
-				//HierarchicalBlockSparseMatrix<Treal> A2T;
-				//transpose(*A.children[2], A2T);
-				
 				// C0 = A0xA0 + A2xA2^T
 				HierarchicalBlockSparseMatrix<Treal> A0xA0;
 				if(A.children[0] != NULL) symm_square(*A.children[0],  A0xA0);
@@ -2759,65 +2756,22 @@ namespace hbsm {
     template<class Treal>
         void HierarchicalBlockSparseMatrix<Treal>::symm_rk(HierarchicalBlockSparseMatrix<Treal> const & A, bool transposed, HierarchicalBlockSparseMatrix<Treal> & C){
             
-            // C = A * A^T + C if transposed = false
-            // C = A^T*A + C otherwise
-            
-            // in the first case let A be MxN, then A * A^T will be MxM so C should be MxM
-            // in the second case C will be NxN
-            int M = A.nRows_orig;
-            int N = A.nCols_orig;
-            
-            // if C is empty, then ok, else its sizes should be correct by default!
-            if(!C.empty()){
-                
-                if(!transposed){
-                    if(C.nRows_orig != M || C.nCols_orig != M)  throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::symm_rk(): matrix C has bad sizes!");
-                }
-                else{
-                    if(C.nRows_orig != N || C.nCols_orig != N)  throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::symm_rk(): matrix C has bad sizes!");
-                }
-                
-            }
-            else{ // C is empty, need to resize
-                
-                 C.set_params(A.get_params());	
-                 
-                 if(!transposed) C.resize(M,M);
-                 else C.resize(N,N);
-                
-            }
-                
+            if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::symm_rk(): non-empty matrix to write result!");				
 
-           
+            C.clear();
             
-
-            if(A.lowest_level()){
-                
-                real ZERO = 0.0;
-                real ONE  = 1.0;
-                
-                if(transposed){
-                    syrk("U", "T", &N, &M, &ONE, &A.submatrix[0], &M, &ZERO, &C.submatrix[0], &N);
-                }
-                else{
-                    syrk("U", "N", &M, &N, &ONE, &A.submatrix[0], &M, &ZERO, &C.submatrix[0], &M);
-                }
-                
-                return;
-            }
-            
-            
-            
+            C.set_params(A.get_params());
             if(!transposed){
-                
-
-                
-                
-                
-                
+                HierarchicalBlockSparseMatrix<Treal> product;
+                multiply(A, false, A, true, product);
+                product.get_upper_triangle(C);
                 
             }
-            
+            else{
+                HierarchicalBlockSparseMatrix<Treal> product;
+                multiply(A, true, A, false, product);
+                product.get_upper_triangle(C);
+            }
             
         }
 			
