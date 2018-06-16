@@ -1434,16 +1434,24 @@ namespace hbsm {
 			if(A.get_level() == 0 && no_of_allocs != NULL) *no_of_allocs = 0;
 			
 			if(A.lowest_level()){
+								
+				//for(int i = 0; i < A.submatrix.size(); ++i){
+				//	C.submatrix[i] = A.submatrix[i] + B.submatrix[i];
+				//}
+                            
+                            int blocksize = A.blocksize;
+                            
+                            int noOfElements = blocksize*blocksize;
+                            Treal const ONEreal = 1.0;
+                            int  const ONEint  = 1;
+                            
+                            //copy A to C
+                            memcpy(&C.submatrix[0], &A.submatrix[0], sizeof(Treal) * noOfElements);
+                            
+                            // Add 1.0 * B to C.
+                            axpy(&noOfElements, &ONEreal, &B.submatrix[0], &ONEint, &C.submatrix[0], &ONEint);
 				
-				//assume that C has been properly resized;
-				assert(A.submatrix.size() == B.submatrix.size());
-				assert(A.submatrix.size() == C.submatrix.size());
-				
-				for(int i = 0; i < A.submatrix.size(); ++i){
-					C.submatrix[i] = A.submatrix[i] + B.submatrix[i];
-				}
-				
-				return;
+                            return;
 			}
 			
 			for(int i = 0; i < 4; ++i){
