@@ -688,36 +688,30 @@ namespace hbsm {
 							  
 			rows.clear();
 			cols.clear();
-			values.clear();			
+			values.clear();		
 
-			std::list<int> rows_list, cols_list;
-			std::list<Treal> values_list;			
-							  
+            rows.reserve(nRows * nCols);
+            cols.reserve(nRows * nCols);
+            values.reserve(nRows * nCols);
+			  
 			if(empty()){;
 				return;
 			}				  
 							  
 			if(lowest_level()){
-				
-				assert(submatrix.size() == nRows * nCols);
-				
+       				
 				for(int i = 0; i < submatrix.size(); ++i){
 					if(fabs(submatrix[i]) > 0.0){
 						
 						int col = i / nRows;
 						int row = i % nRows;
-						rows_list.push_back(row);
-						cols_list.push_back(col);
-						values_list.push_back(submatrix[i]);
+						rows.push_back(row);
+						cols.push_back(col);
+						values.push_back(submatrix[i]);
 						
 					}
 				}
-				
-				// move elements from list to vectors
-				std::move(rows_list.begin(), rows_list.end(), std::back_inserter(rows));
-				std::move(cols_list.begin(), cols_list.end(), std::back_inserter(cols));
-				std::move(values_list.begin(), values_list.end(), std::back_inserter(values));
-				
+	
 				return;
 			}
 			
@@ -735,10 +729,12 @@ namespace hbsm {
 				assert(rows0.size() == cols0.size() && rows0.size() == vals0.size());
 				// child0 - no offset applied
 				for(int i = 0; i < rows0.size(); ++i){
-					rows_list.push_back(rows0[i]);
-					cols_list.push_back(cols0[i]);
-					values_list.push_back(vals0[i]);
+					rows.push_back(rows0[i]);
+					cols.push_back(cols0[i]);
+					values.push_back(vals0[i]);
 				}
+                
+                
 				
 			}
 			
@@ -747,9 +743,9 @@ namespace hbsm {
 				assert(rows1.size() == cols1.size() && rows1.size() == vals1.size());
 				// child1 - offset applied to row number
 				for(int i = 0; i < rows1.size(); ++i){
-					rows_list.push_back(rows1[i]+offset);
-					cols_list.push_back(cols1[i]);
-					values_list.push_back(vals1[i]);
+					rows.push_back(rows1[i]+offset);
+					cols.push_back(cols1[i]);
+					values.push_back(vals1[i]);
 				}
 				
 			}
@@ -759,9 +755,9 @@ namespace hbsm {
 				assert(rows2.size() == cols2.size() && rows2.size() == vals2.size());
 				// child2 - offset applied to col number
 				for(int i = 0; i < rows2.size(); ++i){
-					rows_list.push_back(rows2[i]);
-					cols_list.push_back(cols2[i]+offset);
-					values_list.push_back(vals2[i]);
+					rows.push_back(rows2[i]);
+					cols.push_back(cols2[i]+offset);
+					values.push_back(vals2[i]);
 				}
 				
 			}
@@ -772,18 +768,13 @@ namespace hbsm {
 				assert(rows3.size() == cols3.size() && rows3.size() == vals3.size());
 				// child3 - offset applied to both col and row number
 				for(int i = 0; i < rows3.size(); ++i){
-					rows_list.push_back(rows3[i]+offset);
-					cols_list.push_back(cols3[i]+offset);
-					values_list.push_back(vals3[i]);
+					rows.push_back(rows3[i]+offset);
+					cols.push_back(cols3[i]+offset);
+					values.push_back(vals3[i]);
 				}
 				
 			}
-			
-			// move elements from list to vectors, placeholders will be destroyed automatically when leaving the function
-			std::move(rows_list.begin(), rows_list.end(), std::back_inserter(rows));
-			std::move(cols_list.begin(), cols_list.end(), std::back_inserter(cols));
-			std::move(values_list.begin(), values_list.end(), std::back_inserter(values));
-			
+
 		}
   
   
