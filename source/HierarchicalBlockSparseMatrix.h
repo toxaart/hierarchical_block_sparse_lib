@@ -31,6 +31,52 @@
 #include "CudaSyncPtr.h"
 #endif
 
+#define DYNAMIC_MEMORY 1 
+
+
+#define PROFILING 0
+
+#if PROFILING
+
+#define UNW_LOCAL_ONLY
+#include <cxxabi.h>
+#include <libunwind.h>
+
+
+void backtrace() {
+  unw_cursor_t cursor;
+  unw_context_t context;
+
+  // Initialize cursor to current frame for local unwinding.
+  unw_getcontext(&context);
+  unw_init_local(&cursor, &context);
+
+  // Unwind frames one by one, going up the frame stack.
+  while (unw_step(&cursor) > 0) {
+    unw_word_t offset, pc;
+    unw_get_reg(&cursor, UNW_REG_IP, &pc);
+    if (pc == 0) {
+      break;
+    }
+    std::printf("0x%lx:", pc);
+
+    char sym[256];
+    if (unw_get_proc_name(&cursor, sym, sizeof(sym), &offset) == 0) {
+      char* nameptr = sym;
+      int status;
+      char* demangled = abi::__cxa_demangle(sym, nullptr, nullptr, &status);
+      if (status == 0) {
+        nameptr = demangled;
+      }
+      std::printf(" (%s+0x%lx)\n", nameptr, offset);
+      std::free(demangled);
+    } else {
+      std::printf(" -- error: unable to obtain symbol name for this frame\n");
+    }
+  }
+}
+
+#endif
 
 // Use namespace hbsm: "hierarchical block sparse matrix library".
 namespace hbsm {
@@ -55,9 +101,12 @@ namespace hbsm {
 			 *      child1 | child3
 			 * 
 			 * */
-			
+	
+#if DYNAMIC_MEMORY 	
 			std::vector<Treal> submatrix; // actual data is here if lowest level, otherwise is empty.
-			
+#else
+            Treal submatrix[64*64];
+#endif		
 			
 			struct Transpose{
 				  const char              *bt;
@@ -110,7 +159,9 @@ namespace hbsm {
 				children[2] = NULL;
 				children[3] = NULL;
 				parent = NULL;
-				submatrix.clear();
+#if DYNAMIC_MEMORY		                
+				//submatrix.clear();
+#endif
 			}
 			
 			
@@ -119,7 +170,9 @@ namespace hbsm {
 				if(children[1] != NULL) delete children[1];
 				if(children[2] != NULL) delete children[2];
 				if(children[3] != NULL) delete children[3];
+#if DYNAMIC_MEMORY		                
 				submatrix.clear();
+#endif                
 			}
 
 			
@@ -273,7 +326,11 @@ namespace hbsm {
 		
 	template<class Treal> 
 		bool HierarchicalBlockSparseMatrix<Treal>::empty() const {
+#if DYNAMIC_MEMORY		           
 			if(nRows == 0 && nCols == 0 && submatrix.empty() && !children_exist())
+#else
+            if(nRows == 0 && nCols == 0 && !children_exist())
+#endif               
 			  return true;
 			else
 			  return false;
@@ -348,7 +405,7 @@ namespace hbsm {
 		void HierarchicalBlockSparseMatrix<Treal>::resize(int nRows_, int nCols_, size_t* no_of_resizes) {
 		assert(blocksize > 0);
 		
-		submatrix.clear();
+		//submatrix.clear();
 		
 		nRows_orig = nRows_; // only top level contains true size, rest have duplicates of nRows and nCols
 		nCols_orig = nCols_;
@@ -357,7 +414,11 @@ namespace hbsm {
 		if(nRows_ <= blocksize && nCols_ <= blocksize){
 			nRows = blocksize;
 			nCols = blocksize;
+#if DYNAMIC_MEMORY            
 			submatrix.resize(blocksize*blocksize);
+#else
+            for(int i = 0; i < blocksize*blocksize; ++i) submatrix[i] = 0.0; 
+#endif            
 			if(no_of_resizes != NULL) (*no_of_resizes)++;
             //std::cout << "resize happened " << std::endl;
 			return;
@@ -404,7 +465,11 @@ namespace hbsm {
 			}
 			
 			if(lowest_level()){
+#if DYNAMIC_MEMORY                
 				submatrix.clear();
+#else
+
+#endif               
 				nRows = 0;
 				nCols = 0;
 				if(children_exist()){
@@ -627,11 +692,15 @@ namespace hbsm {
 			
 		    if(lowest_level()){
 				
-				assert(submatrix.size() == nRows * nCols);
+				//assert(submatrix.size() == nRows * nCols);
 				
 				Treal frob_norm_squared = 0.0;
-				
+
+#if DYNAMIC_MEMORY				
 				for(int i = 0; i < submatrix.size(); ++i){
+#else
+                for(int i = 0; i < blocksize*blocksize; ++i){
+#endif                    
 					frob_norm_squared += submatrix[i] * submatrix[i];
 				}
 				
@@ -657,11 +726,14 @@ namespace hbsm {
 			
 		    if(lowest_level()){
 				
-				assert(submatrix.size() == nRows * nCols);
+				//assert(submatrix.size() == nRows * nCols);
 				
 				int nnz = 0;
-				
+#if DYNAMIC_MEMORY				
 				for(int i = 0; i < submatrix.size(); ++i){
+#else
+                for(int i = 0; i < blocksize*blocksize; ++i){
+#endif                    
 					if(fabs(submatrix[i]) > 0.0) nnz += 1; 
 				}
 				
@@ -686,9 +758,9 @@ namespace hbsm {
 						  std::vector<Treal> & values) const  {
 			
 							  
-			rows.clear();
-			cols.clear();
-			values.clear();		
+			if(!rows.empty()) rows.clear();
+			if(!cols.empty()) cols.clear();
+			if(!values.empty()) values.clear();		
 
             rows.reserve(nRows * nCols);
             cols.reserve(nRows * nCols);
@@ -699,8 +771,11 @@ namespace hbsm {
 			}				  
 							  
 			if(lowest_level()){
-       				
+#if DYNAMIC_MEMORY       				
 				for(int i = 0; i < submatrix.size(); ++i){
+#else   
+                for(int i = 0; i < blocksize*blocksize; ++i){
+#endif                    
 					if(fabs(submatrix[i]) > 0.0){
 						
 						int col = i / nRows;
@@ -804,9 +879,13 @@ namespace hbsm {
 		size_t HierarchicalBlockSparseMatrix<Treal>::get_size() const  {
 			if(empty()) return 5 * sizeof(int) + 4 * sizeof(size_t);
 			
-			if(lowest_level()){				
-				return 5 * sizeof(int) + 4 * sizeof(size_t) + submatrix.size() * sizeof(Treal);				
-			}
+			if(lowest_level()){	
+#if DYNAMIC_MEMORY			
+				return 5 * sizeof(int) + 4 * sizeof(size_t) + submatrix.size() * sizeof(Treal);	
+#else
+                return 5 * sizeof(int) + 4 * sizeof(size_t) + blocksize * blocksize * sizeof(Treal);				
+#endif	
+		}
 		
 			size_t totalsize = 5 * sizeof(int) + 4 * sizeof(size_t); // keep sizes of children in a row!
 		
@@ -929,8 +1008,13 @@ namespace hbsm {
 				memcpy(p, &zero_size, sizeof(size_t));
 				p += sizeof(size_t);
 											
+#if DYNAMIC_MEMORY
 				memcpy(p, &submatrix[0], submatrix.size() * sizeof(Treal));
 				p += submatrix.size() * sizeof(Treal);
+#else
+				memcpy(p, &submatrix[0], blocksize * blocksize * sizeof(Treal));
+				p += blocksize * blocksize * sizeof(Treal);
+#endif                
 				
 				return;
 			}
@@ -1154,8 +1238,11 @@ namespace hbsm {
 				
 				//std::cout << "Leaf matrix read " << std::endl;
 				assert(n_bytes_left_to_read == nRows * nCols * sizeof(Treal));
-				
+#if DYNAMIC_MEMORY				
 				submatrix.resize(nRows * nCols);
+#else
+                
+#endif                
 				memcpy(&submatrix[0], p, nRows * nCols * sizeof(Treal));
 				p += nRows * nCols * sizeof(Treal);
 				
@@ -1180,10 +1267,12 @@ namespace hbsm {
             
             if(other.lowest_level()){
                 
-                assert(submatrix.size() == nRows * nCols);
-                
+                //assert(submatrix.size() == nRows * nCols);
+#if DYNAMIC_MEMORY                
                 memcpy(&submatrix[0], &(other.submatrix[0]), sizeof(Treal) * other.submatrix.size());
-                
+#else
+                 memcpy(&submatrix[0], &(other.submatrix[0]), sizeof(Treal) * other.blocksize * other.blocksize);
+#endif                
                 return;
             }
             
@@ -1219,10 +1308,12 @@ namespace hbsm {
            
             if(other.lowest_level()){
     
-                assert(submatrix.size() == nRows * nCols);
-                
+                //assert(submatrix.size() == nRows * nCols);
+#if DYNAMIC_MEMORY                
                 memcpy(&submatrix[0], &(other.submatrix[0]), sizeof(Treal) * other.submatrix.size());
-
+#else
+                memcpy(&submatrix[0], &(other.submatrix[0]), sizeof(Treal) * other.blocksize * other.blocksize);
+#endif    
                 for(int i = 0; i < nRows; ++i){
                     submatrix[i*nRows + i] += alpha;
                 }
@@ -1394,13 +1485,14 @@ namespace hbsm {
 				       HierarchicalBlockSparseMatrix<Treal> & C,
 					   size_t* no_of_resizes){
 		
+                           
 						   
 
 			if(A.nRows_orig != B.nRows_orig || A.nCols_orig != B.nCols_orig ){
 				throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add(): matrices to add have different sizes!");
 			}			   
 			
-			C.clear();
+			if(!C.empty()) C.clear();
     
             C.set_params(A.get_params());
                 
@@ -1551,6 +1643,8 @@ namespace hbsm {
 		void HierarchicalBlockSparseMatrix<Treal>::multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
                         HierarchicalBlockSparseMatrix<Treal>& C, size_t* no_of_block_multiplies, size_t* no_of_resizes){
 		      
+            
+                            
                             
 			if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): non-empty matrix to write result!");				
 							
@@ -1756,6 +1850,10 @@ namespace hbsm {
                     C.children[3]->parent = &C;			
                     add(A1xB2, A3xB3, *C.children[3], no_of_resizes);
                 }
+                
+                #if PROFILING  
+                if(A.get_level() == 0) backtrace();
+                #endif  
 				
 				return;
 			}	
@@ -2086,8 +2184,8 @@ namespace hbsm {
 				return;
 	
 			}
-			
-	   
+	
+            
 			return;
 		}
 		
@@ -2107,7 +2205,7 @@ namespace hbsm {
 			
             if(other.lowest_level()){
 			
-                assert(submatrix.size() == nRows * nCols);
+                //assert(submatrix.size() == nRows * nCols);
                 
                 for(int i = 0; i < nRows * nCols; ++i) submatrix[i] = other.submatrix[i] * alpha;
                 
@@ -2542,7 +2640,7 @@ namespace hbsm {
 			
 			if(get_n_rows() != get_n_cols()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::get_upper_triangle(): call for non-square matrix!");
 			
-			A.clear();
+			if(!A.empty())A.clear();
 			
 			A.set_params(get_params());
 			A.resize(nRows_orig,nCols_orig);
@@ -2774,7 +2872,7 @@ namespace hbsm {
             
             if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::symm_rk(): non-empty matrix to write result!");				
 
-            C.clear();
+           // C.clear();
             
             C.set_params(A.get_params());
             if(!transposed){
