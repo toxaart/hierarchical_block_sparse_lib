@@ -198,6 +198,8 @@ static int test_operations() {
 		set_row(tmp, 1, 0, 1, 2);
 		tmp.assign(A);
 	}
+    
+    std::cout << "A created" <<std::endl;
 		
 	MatrixType AT_ref;
 	AT_ref.set_params(param);
@@ -219,10 +221,14 @@ static int test_operations() {
 		set_row(tmp, 1, 6, 2, 4);
 		tmp.assign(B);
 	}
+    
+    std::cout << "B created" <<std::endl;
 
 	MatrixType C;
 	C.set_params(param);
 	MatrixType::add(A, B, C);
+
+    std::cout << "C = A+B computed" <<std::endl;
 
 	MatrixType Cref;
 	Cref.set_params(param);
@@ -251,9 +257,15 @@ static int test_operations() {
 		set_row(tmp, 2, 3, 5);
 		tmp.assign(D);
 	}
+    
+    std::cout << "D created" <<std::endl;
+    size_t n_multiplications, n_resizes;
   
 	MatrixType AxD;
-	MatrixType::multiply(A, false, D, false, AxD);
+	MatrixType::multiply(A, false, D, false, AxD, &n_multiplications, &n_resizes);
+
+    std::cout << "AxD computed" <<std::endl;
+    std::cout << "N multiplications = " << n_multiplications << ", n resizes = " << n_resizes << std::endl;
 
 	MatrixType AxDref;
 	AxDref.set_params(param);

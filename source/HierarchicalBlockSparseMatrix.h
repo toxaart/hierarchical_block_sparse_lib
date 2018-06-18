@@ -359,6 +359,7 @@ namespace hbsm {
 			nCols = blocksize;
 			submatrix.resize(blocksize*blocksize);
 			if(no_of_resizes != NULL) (*no_of_resizes)++;
+            //std::cout << "resize happened " << std::endl;
 			return;
 		}
 	
@@ -449,17 +450,6 @@ namespace hbsm {
 			}
 			
 			if(lowest_level()){
-				
-			
-				
-				/*
-				std::cout << "assign_from_vectors: leaf level called" << std::endl;
-				std::cout << "block at " << get_first_row_position() << " " << get_first_col_position() << std::endl;
-				std::cout << "at bottom boundary? " << on_bottom_boundary()  << std::endl;
-				std::cout << "at right boundary? " << on_right_boundary()  << std::endl;*/
-				
-				// assume that the matrix has been properly resized already;
-				assert(submatrix.size() == nCols*nRows);
                 
 				for(int i = 0; i < nCols*nRows; ++i){
 					submatrix[i] = 0.0;
@@ -508,12 +498,26 @@ namespace hbsm {
 			}
 			
 			// now we have to split arrays into 4 parts and recursively apply the same procedure on children
-			// use list instead of vectors, number of elements is not known in advance
 			
 			
-			std::list<int> rows0,rows1,rows2,rows3;
-			std::list<int> cols0,cols1,cols2,cols3;
-			std::list<Treal> vals0,vals1,vals2,vals3;
+			std::vector<int> rows0, cols0, rows1, cols1, rows2, cols2, rows3, cols3;
+            std::vector<Treal> vals0,vals1,vals2,vals3;
+            
+            rows0.reserve(rows.size());
+            cols0.reserve(rows.size());
+            vals0.reserve(rows.size());
+            
+            rows1.reserve(rows.size());
+            cols1.reserve(rows.size());
+            vals1.reserve(rows.size());
+            
+            rows2.reserve(rows.size());
+            cols2.reserve(rows.size());
+            vals2.reserve(rows.size());
+            
+            rows3.reserve(rows.size());
+            cols3.reserve(rows.size());
+            vals3.reserve(rows.size());
 			
 			// the offset, when providing parts of vectors to the next level their "coordinates" will be shifted
 			int offset = nRows/2;
@@ -562,13 +566,7 @@ namespace hbsm {
 			    children[0]->set_params(get_params());
 				children[0]->resize(nRows / 2, nCols / 2);
 				children[0]->parent = this;
-				
-				//convert from list to vectors using move iterator (C++11 only!)
-				std::vector<int> rows0_vect{ std::make_move_iterator(std::begin(rows0)), std::make_move_iterator(std::end(rows0)) };
-				std::vector<int> cols0_vect{ std::make_move_iterator(std::begin(cols0)), std::make_move_iterator(std::end(cols0)) };
-				std::vector<Treal> vals0_vect{ std::make_move_iterator(std::begin(vals0)), std::make_move_iterator(std::end(vals0)) };
-				
-				children[0]->assign_from_vectors_general(rows0_vect, cols0_vect, vals0_vect, useMax,true);
+                children[0]->assign_from_vectors_general(rows0, cols0, vals0, useMax,true);
 			}
 			
 			if(vals1.size() > 0){
@@ -579,12 +577,7 @@ namespace hbsm {
 			    children[1]->set_params(get_params());
 				children[1]->resize(nRows / 2, nCols / 2);
 				children[1]->parent = this;
-				
-				std::vector<int> rows1_vect{ std::make_move_iterator(std::begin(rows1)), std::make_move_iterator(std::end(rows1)) };
-				std::vector<int> cols1_vect{ std::make_move_iterator(std::begin(cols1)), std::make_move_iterator(std::end(cols1)) };
-				std::vector<Treal> vals1_vect{ std::make_move_iterator(std::begin(vals1)), std::make_move_iterator(std::end(vals1)) };
-				
-				children[1]->assign_from_vectors_general(rows1_vect, cols1_vect, vals1_vect, useMax,true);
+                children[1]->assign_from_vectors_general(rows1, cols1, vals1, useMax,true);
 			}
 			
 			if(vals2.size() > 0){
@@ -595,12 +588,7 @@ namespace hbsm {
 			    children[2]->set_params(get_params());
 				children[2]->resize(nRows / 2, nCols / 2);
 				children[2]->parent = this;
-				
-				std::vector<int> rows2_vect{ std::make_move_iterator(std::begin(rows2)), std::make_move_iterator(std::end(rows2)) };
-				std::vector<int> cols2_vect{ std::make_move_iterator(std::begin(cols2)), std::make_move_iterator(std::end(cols2)) };
-				std::vector<Treal> vals2_vect{ std::make_move_iterator(std::begin(vals2)), std::make_move_iterator(std::end(vals2)) };
-				
-				children[2]->assign_from_vectors_general(rows2_vect, cols2_vect, vals2_vect, useMax,true);
+                children[2]->assign_from_vectors_general(rows2, cols2, vals2, useMax,true);
 			}
 			
 			if(vals3.size() > 0){
@@ -611,12 +599,7 @@ namespace hbsm {
 			    children[3]->set_params(get_params());
 				children[3]->resize(nRows / 2, nCols / 2);
 				children[3]->parent = this;
-				
-				std::vector<int> rows3_vect{ std::make_move_iterator(std::begin(rows3)), std::make_move_iterator(std::end(rows3)) };
-				std::vector<int> cols3_vect{ std::make_move_iterator(std::begin(cols3)), std::make_move_iterator(std::end(cols3)) };
-				std::vector<Treal> vals3_vect{ std::make_move_iterator(std::begin(vals3)), std::make_move_iterator(std::end(vals3)) };
-				
-				children[3]->assign_from_vectors_general(rows3_vect, cols3_vect, vals3_vect, useMax,true);
+                children[3]->assign_from_vectors_general(rows3, cols3, vals3, useMax,true);
 			}		
 			
 		}
