@@ -416,10 +416,11 @@ namespace hbsm {
 			nCols = blocksize;
 #if DYNAMIC_MEMORY            
 			submatrix.resize(blocksize*blocksize);
+			if(no_of_resizes != NULL) (*no_of_resizes)++;
 #else
             for(int i = 0; i < blocksize*blocksize; ++i) submatrix[i] = 0.0; 
 #endif            
-			if(no_of_resizes != NULL) (*no_of_resizes)++;
+			
             //std::cout << "resize happened " << std::endl;
 			return;
 		}
@@ -622,6 +623,13 @@ namespace hbsm {
 				}
 				
 			}
+			/*
+			std::cout << "Assign from vectors: " <<std::endl;
+			std::cout << "To child0: " << vals0.size() << " elements." << std::endl;
+			std::cout << "To child1: " << vals1.size() << " elements." << std::endl;
+			std::cout << "To child2: " << vals2.size() << " elements." << std::endl;
+			std::cout << "To child3: " << vals3.size() << " elements." << std::endl;
+			std::cout << std::endl;*/
 
 			if(vals0.size() > 0){
 				if(children[0] != NULL){
@@ -667,6 +675,11 @@ namespace hbsm {
                 children[3]->assign_from_vectors_general(rows3, cols3, vals3, useMax,true);
 			}		
 			
+			/*if(children[0] != NULL) std::cout << "Child0 created" << std::endl;
+			if(children[1] != NULL) std::cout << "Child1 created" << std::endl;
+			if(children[2] != NULL) std::cout << "Child2 created" << std::endl;
+			if(children[3] != NULL) std::cout << "Child3 created" << std::endl;
+			std::cout << std::endl;*/
 		}
 		
 		
@@ -1485,20 +1498,32 @@ namespace hbsm {
 				       HierarchicalBlockSparseMatrix<Treal> & C,
 					   size_t* no_of_resizes){
 		
-                           
-						   
+			
+            if(!C.empty()) C.clear();               
+			
+			if(A.empty() && B.empty()){				
+				return;
+			}
+			
+			if(A.empty() && !B.empty()){
+				C.copy(B);
+				return;
+			}
+			if(!A.empty() && B.empty()){
+				C.copy(A);
+				return;
+			}			 
+  
 
 			if(A.nRows_orig != B.nRows_orig || A.nCols_orig != B.nCols_orig ){
 				throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add(): matrices to add have different sizes!");
-			}			   
+			}		
 			
-			if(!C.empty()) C.clear();
-    
+		
             C.set_params(A.get_params());
                 
             C.resize(A.nRows_orig,A.nCols_orig, no_of_resizes);
-			
-			//if(A.get_level() == 0 && no_of_allocs != NULL) *no_of_allocs = 0;
+						
 			
 			if(A.lowest_level()){
 								
@@ -1764,66 +1789,36 @@ namespace hbsm {
 				
 				HierarchicalBlockSparseMatrix<Treal> A0xB0;
 				if(A.children[0] != NULL && B.children[0] != NULL) multiply(*A.children[0], tA, *B.children[0], tB, A0xB0, no_of_block_multiplies, no_of_resizes);
-				else{
-					A0xB0.set_params(A.get_params());
-					A0xB0.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
+				
 				HierarchicalBlockSparseMatrix<Treal> A2xB1;
 				if(A.children[2] != NULL && B.children[1] != NULL) multiply(*A.children[2], tA, *B.children[1], tB, A2xB1, no_of_block_multiplies, no_of_resizes);
-				else{
-					A2xB1.set_params(A.get_params());
-					A2xB1.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
-				//if(C.children[0] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A0xB0.children_exist() || A2xB1.children_exist() || A2xB1.lowest_level()){
+				
+                if(A0xB0.children_exist() || A2xB1.children_exist() || A0xB0.lowest_level() || A2xB1.lowest_level() ){
                     C.children[0] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[0]->parent = &C;	
                     add(A0xB0, A2xB1, *C.children[0], no_of_resizes);
+
                 }
-				
 				
 				HierarchicalBlockSparseMatrix<Treal> A1xB0;
 				if(A.children[1] != NULL && B.children[0] != NULL) multiply(*A.children[1], tA, *B.children[0], tB, A1xB0, no_of_block_multiplies, no_of_resizes);
-				else{
-					A1xB0.set_params(A.get_params());
-					A1xB0.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-				
 				
 				HierarchicalBlockSparseMatrix<Treal> A3xB1;
 				if(A.children[3] != NULL && B.children[1] != NULL) multiply(*A.children[3], tA, *B.children[1], tB, A3xB1, no_of_block_multiplies, no_of_resizes);
-				else{
-					A3xB1.set_params(A.get_params());
-					A3xB1.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
 				
-				//if(C.children[1] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A1xB0.children_exist() || A3xB1.children_exist() || A3xB1.lowest_level()){
+                if(A1xB0.children_exist() || A3xB1.children_exist() || A1xB0.lowest_level() || A3xB1.lowest_level()){
                     C.children[1] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[1]->parent = &C;
                     add(A1xB0, A3xB1, *C.children[1], no_of_resizes);
                 }
             
-				
 				HierarchicalBlockSparseMatrix<Treal> A0xB2;
 				if(A.children[0] != NULL && B.children[2] != NULL) multiply(*A.children[0], tA, *B.children[2], tB, A0xB2, no_of_block_multiplies, no_of_resizes);
-				else{
-					A0xB2.set_params(A.get_params());
-					A0xB2.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
 				
 				HierarchicalBlockSparseMatrix<Treal> A2xB3;
 				if(A.children[2] != NULL && B.children[3] != NULL) multiply(*A.children[2], tA, *B.children[3], tB, A2xB3, no_of_block_multiplies, no_of_resizes);
-				else{
-					A2xB3.set_params(A.get_params());
-					A2xB3.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
 				
-                
-				//if(C.children[2] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A0xB2.children_exist() || A2xB3.children_exist() || A2xB3.lowest_level()){
+                if(A0xB2.children_exist() || A2xB3.children_exist() || A0xB2.lowest_level() || A2xB3.lowest_level()){
                     C.children[2] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[2]->parent = &C;
                     add(A0xB2, A2xB3, *C.children[2], no_of_resizes);
@@ -1831,28 +1826,18 @@ namespace hbsm {
 				
 				HierarchicalBlockSparseMatrix<Treal> A1xB2;
 				if(A.children[1] != NULL && B.children[2] != NULL) multiply(*A.children[1], tA, *B.children[2], tB, A1xB2, no_of_block_multiplies, no_of_resizes);
-				else{
-					A1xB2.set_params(A.get_params());
-					A1xB2.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
 				
 				HierarchicalBlockSparseMatrix<Treal> A3xB3;
 				if(A.children[3] != NULL && B.children[3] != NULL) multiply(*A.children[3], tA, *B.children[3], tB, A3xB3, no_of_block_multiplies, no_of_resizes);
-				else{
-					A3xB3.set_params(A.get_params());
-					A3xB3.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
 				
-             
-				//if(C.children[3] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-				if(A1xB2.children_exist() || A3xB3.children_exist() || A3xB3.lowest_level()){
+				if(A1xB2.children_exist() || A3xB3.children_exist() || A1xB2.lowest_level() || A3xB3.lowest_level()){
                     C.children[3] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[3]->parent = &C;			
                     add(A1xB2, A3xB3, *C.children[3], no_of_resizes);
                 }
                 
                 #if PROFILING  
-                if(A.get_level() == 0) backtrace();
+					if(A.get_level() == 0) backtrace();
                 #endif  
 				
 				return;
@@ -1867,94 +1852,47 @@ namespace hbsm {
 				
 				HierarchicalBlockSparseMatrix<Treal> A0xB0T;
 				if(A.children[0] != NULL && B.children[0] != NULL) multiply(*A.children[0], tA, *B.children[0], tB, A0xB0T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A0xB0T.set_params(A.get_params());
-					A0xB0T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
 
-				
 				HierarchicalBlockSparseMatrix<Treal> A2xB2T;
 				if(A.children[2] != NULL && B.children[2] != NULL) multiply(*A.children[2], tA, *B.children[2], tB, A2xB2T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A2xB2T.set_params(A.get_params());
-					A2xB2T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
 				
-				//if(C.children[0] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A0xB0T.children_exist() || A2xB2T.children_exist() || A2xB2T.lowest_level()){
+                if(A0xB0T.children_exist() || A2xB2T.children_exist() || A0xB0T.lowest_level() || A2xB2T.lowest_level()){
                     C.children[0] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[0]->parent = &C;	
                     add(A0xB0T, A2xB2T, *C.children[0], no_of_resizes);
                 }
 				
-	
 				HierarchicalBlockSparseMatrix<Treal> A1xB0T;
 				if(A.children[1] != NULL && B.children[0] != NULL) multiply(*A.children[1], tA, *B.children[0], tB, A1xB0T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A1xB0T.set_params(A.get_params());
-					A1xB0T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
 				
 				HierarchicalBlockSparseMatrix<Treal> A3xB2T;
 				if(A.children[3] != NULL && B.children[2] != NULL) multiply(*A.children[3], tA, *B.children[2], tB, A3xB2T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A3xB2T.set_params(A.get_params());
-					A3xB2T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
 
-				
-				//if(C.children[1] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A1xB0T.children_exist() || A3xB2T.children_exist() || A3xB2T.lowest_level()){
+                if(A1xB0T.children_exist() || A3xB2T.children_exist() || A1xB0T.lowest_level() || A3xB2T.lowest_level()){
                     C.children[1] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[1]->parent = &C;	
                     add(A1xB0T, A3xB2T, *C.children[1], no_of_resizes);
                 }
 				
-				
 				HierarchicalBlockSparseMatrix<Treal> A0xB1T;
 				if(A.children[0] != NULL && B.children[1] != NULL) multiply(*A.children[0], tA, *B.children[1], tB, A0xB1T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A0xB1T.set_params(A.get_params());
-					A0xB1T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
 
-				
 				HierarchicalBlockSparseMatrix<Treal> A2xB3T;
 				if(A.children[2] != NULL && B.children[3] != NULL) multiply(*A.children[2], tA, *B.children[3], tB, A2xB3T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A2xB3T.set_params(A.get_params());
-					A2xB3T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
 				
-				//if(C.children[2] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A0xB1T.children_exist() || A2xB3T.children_exist() || A2xB3T.lowest_level()){
+                if(A0xB1T.children_exist() || A2xB3T.children_exist() || A0xB1T.lowest_level() || A2xB3T.lowest_level()){
                     C.children[2] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[2]->parent = &C;	
                     add(A0xB1T, A2xB3T, *C.children[2], no_of_resizes);
                 }
 										
-				
 				HierarchicalBlockSparseMatrix<Treal> A1xB1T;
 				if(A.children[1] != NULL && B.children[1] != NULL) multiply(*A.children[1], tA, *B.children[1], tB, A1xB1T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A1xB1T.set_params(A.get_params());
-					A1xB1T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
 
-				
 				HierarchicalBlockSparseMatrix<Treal> A3xB3T;
 				if(A.children[3] != NULL && B.children[3] != NULL) multiply(*A.children[3], tA, *B.children[3], tB, A3xB3T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A3xB3T.set_params(A.get_params());
-					A3xB3T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
 
-				
-				//if(C.children[3] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A1xB1T.children_exist() || A3xB3T.children_exist() || A3xB3T.lowest_level()){
+                if(A1xB1T.children_exist() || A3xB3T.children_exist() || A1xB1T.lowest_level() || A3xB3T.lowest_level()){
                     C.children[3] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[3]->parent = &C;	
                     add(A1xB1T, A3xB3T, *C.children[3], no_of_resizes);
@@ -1970,101 +1908,49 @@ namespace hbsm {
 				// C2 = A0^TB2 + A1^TB3
 				// C3 = A2^TB2 + A3^TB3
 				
-				
-				
 				HierarchicalBlockSparseMatrix<Treal> A0TxB0;
 				if(A.children[0] != NULL && B.children[0] != NULL) multiply(*A.children[0], tA, *B.children[0], tB, A0TxB0, no_of_block_multiplies, no_of_resizes);
-				else{
-					A0TxB0.set_params(A.get_params());
-					A0TxB0.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
-				
+		
 				HierarchicalBlockSparseMatrix<Treal> A1TxB1;
 				if(A.children[1] != NULL && B.children[1] != NULL) multiply(*A.children[1], tA, *B.children[1], tB, A1TxB1, no_of_block_multiplies, no_of_resizes);
-				else{
-					A1TxB1.set_params(A.get_params());
-					A1TxB1.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
-				
-				//if(C.children[0] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A0TxB0.children_exist() || A1TxB1.children_exist() || A1TxB1.lowest_level()){
+			
+                if(A0TxB0.children_exist() || A1TxB1.children_exist() || A0TxB0.lowest_level() || A1TxB1.lowest_level()){
                     C.children[0] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[0]->parent = &C;	
                     add(A0TxB0, A1TxB1, *C.children[0], no_of_resizes);
                 }
-					
-			
-				
+									
 				HierarchicalBlockSparseMatrix<Treal> A2TxB0;
 				if(A.children[2] != NULL && B.children[0] != NULL) multiply(*A.children[2], tA, *B.children[0], tB, A2TxB0, no_of_block_multiplies, no_of_resizes);
-				else{
-					A2TxB0.set_params(A.get_params());
-					A2TxB0.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
 
-				
 				HierarchicalBlockSparseMatrix<Treal> A3TxB1;
 				if(A.children[3] != NULL && B.children[1] != NULL) multiply(*A.children[3], tA, *B.children[1], tB, A3TxB1, no_of_block_multiplies, no_of_resizes);
-				else{
-					A3TxB1.set_params(A.get_params());
-					A3TxB1.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
 				
-				//if(C.children[1] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A2TxB0.children_exist() || A3TxB1.children_exist() || A3TxB1.lowest_level()){
+                if(A2TxB0.children_exist() || A3TxB1.children_exist() || A2TxB0.lowest_level() || A3TxB1.lowest_level()){
                     C.children[1] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[1]->parent = &C;	
                     add(A2TxB0, A3TxB1, *C.children[1], no_of_resizes);
                 }
-				
-					
-				
+								
 				HierarchicalBlockSparseMatrix<Treal> A0TxB2;
 				if(A.children[0] != NULL && B.children[2] != NULL) multiply(*A.children[0], tA, *B.children[2], tB, A0TxB2, no_of_block_multiplies, no_of_resizes);
-				else{
-					A0TxB2.set_params(A.get_params());
-					A0TxB2.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
 				
 				HierarchicalBlockSparseMatrix<Treal> A1TxB3;
 				if(A.children[1] != NULL && B.children[3] != NULL) multiply(*A.children[1], tA, *B.children[3], tB, A1TxB3, no_of_block_multiplies, no_of_resizes);
-				else{
-					A1TxB3.set_params(A.get_params());
-					A1TxB3.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
 				
-				//if(C.children[2] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A0TxB2.children_exist() || A1TxB3.children_exist() || A1TxB3.lowest_level()){
+                if(A0TxB2.children_exist() || A1TxB3.children_exist() || A0TxB2.lowest_level() || A1TxB3.lowest_level()){
                     C.children[2] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[2]->parent = &C;	
                     add(A0TxB2, A1TxB3, *C.children[2], no_of_resizes);
                 }
 				
-					
-				
 				HierarchicalBlockSparseMatrix<Treal> A2TxB2;
 				if(A.children[2] != NULL && B.children[2] != NULL) multiply(*A.children[2], tA, *B.children[2], tB, A2TxB2, no_of_block_multiplies, no_of_resizes);
-				else{
-					A2TxB2.set_params(A.get_params());
-					A2TxB2.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
 				
 				HierarchicalBlockSparseMatrix<Treal> A3TxB3;
 				if(A.children[3] != NULL && B.children[3] != NULL) multiply(*A.children[3], tA, *B.children[3], tB, A3TxB3, no_of_block_multiplies, no_of_resizes);
-				else{
-					A3TxB3.set_params(A.get_params());
-					A3TxB3.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
-				
-				//if(C.children[3] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A2TxB2.children_exist() || A3TxB3.children_exist() || A3TxB3.lowest_level()){
+		
+                if(A2TxB2.children_exist() || A3TxB3.children_exist() || A2TxB2.lowest_level() || A3TxB3.lowest_level()){
                     C.children[3] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[3]->parent = &C;	
                     add(A2TxB2, A3TxB3, *C.children[3], no_of_resizes);
@@ -2084,100 +1970,50 @@ namespace hbsm {
 			
 				HierarchicalBlockSparseMatrix<Treal> A0TxB0T;
 				if(A.children[0] != NULL && B.children[0] != NULL) multiply(*A.children[0], tA, *B.children[0], tB, A0TxB0T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A0TxB0T.set_params(A.get_params());
-					A0TxB0T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
 				
 				HierarchicalBlockSparseMatrix<Treal> A1TxB2T;
 				if(A.children[1] != NULL && B.children[2] != NULL) multiply(*A.children[1], tA, *B.children[2], tB, A1TxB2T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A1TxB2T.set_params(A.get_params());
-					A1TxB2T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
 				
-				//if(C.children[0] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A0TxB0T.children_exist() || A1TxB2T.children_exist() || A1TxB2T.lowest_level()){
+                if(A0TxB0T.children_exist() || A1TxB2T.children_exist() || A0TxB0T.lowest_level() || A1TxB2T.lowest_level()){
                     C.children[0] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[0]->parent = &C;	
-					
                     add(A0TxB0T, A1TxB2T, *C.children[0], no_of_resizes);
                 }
 					
 				
 				HierarchicalBlockSparseMatrix<Treal> A2TxB0T;
 				if(A.children[2] != NULL && B.children[0] != NULL) multiply(*A.children[2], tA, *B.children[0], tB, A2TxB0T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A2TxB0T.set_params(A.get_params());
-					A2TxB0T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
 				
 				HierarchicalBlockSparseMatrix<Treal> A3TxB2T;
 				if(A.children[3] != NULL && B.children[2] != NULL) multiply(*A.children[3], tA, *B.children[2], tB, A3TxB2T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A3TxB2T.set_params(A.get_params());
-					A3TxB2T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
 
-				
-				//if(C.children[1] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A2TxB0T.children_exist() || A3TxB2T.children_exist() || A3TxB2T.lowest_level()){
+                if(A2TxB0T.children_exist() || A3TxB2T.children_exist() || A2TxB0T.lowest_level() || A3TxB2T.lowest_level()){
                     C.children[1] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[1]->parent = &C;	
-					
                     add(A2TxB0T, A3TxB2T, *C.children[1], no_of_resizes);
                 }
 				
-				
 				HierarchicalBlockSparseMatrix<Treal> A0TxB1T;
 				if(A.children[0] != NULL && B.children[1] != NULL) multiply(*A.children[0], tA, *B.children[1], tB, A0TxB1T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A0TxB1T.set_params(A.get_params());
-					A0TxB1T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
 				
 				HierarchicalBlockSparseMatrix<Treal> A1TxB3T;
 				if(A.children[1] != NULL && B.children[3] != NULL) multiply(*A.children[1], tA, *B.children[3], tB, A1TxB3T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A1TxB3T.set_params(A.get_params());
-					A1TxB3T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
 
-				
-				//if(C.children[2] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A0TxB1T.children_exist() || A1TxB3T.children_exist() || A1TxB3T.lowest_level()){
+                if(A0TxB1T.children_exist() || A1TxB3T.children_exist() || A0TxB1T.lowest_level() || A1TxB3T.lowest_level()){
                     C.children[2] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[2]->parent = &C;	
-					
                     add(A0TxB1T, A1TxB3T, *C.children[2], no_of_resizes);
                 }
 					
-		
 				HierarchicalBlockSparseMatrix<Treal> A2TxB1T;
 				if(A.children[2] != NULL && B.children[1] != NULL) multiply(*A.children[2], tA, *B.children[1], tB, A2TxB1T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A2TxB1T.set_params(A.get_params());
-					A2TxB1T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
 				
 				HierarchicalBlockSparseMatrix<Treal> A3TxB3T;
 				if(A.children[3] != NULL && B.children[3] != NULL) multiply(*A.children[3], tA, *B.children[3], tB, A3TxB3T, no_of_block_multiplies, no_of_resizes);
-				else{
-					A3TxB3T.set_params(A.get_params());
-					A3TxB3T.resize(A.nRows/2, B.nCols/2, no_of_resizes);
-				}
-
 				
-				//if(C.children[3] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrix C has non-null child!");
-                if(A2TxB1T.children_exist() || A3TxB3T.children_exist() || A3TxB3T.lowest_level()){
+                if(A2TxB1T.children_exist() || A3TxB3T.children_exist() || A2TxB1T.lowest_level() || A3TxB3T.lowest_level()){
                     C.children[3] = new HierarchicalBlockSparseMatrix<Treal>();
                     C.children[3]->parent = &C;	
-					
                     add(A2TxB1T, A3TxB3T, *C.children[3], no_of_resizes);
                 }
 				

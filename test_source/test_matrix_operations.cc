@@ -188,10 +188,12 @@ static int test_operations() {
 #endif
   
   // Test add()
+	size_t n_resizes = 0;
+	size_t n_multiplications;
 
 	MatrixType A;
 	A.set_params(param);
-	A.resize(2, 3);	
+	A.resize(2, 3, &n_resizes);	
 	{
 		SparseMatrix tmp;
 		set_row(tmp, 0, 2, 3, 5);
@@ -200,6 +202,8 @@ static int test_operations() {
 	}
     
     std::cout << "A created" <<std::endl;
+	std::cout << "n_resizes = " << n_resizes << std::endl;
+	std::cout << std::endl;
 		
 	MatrixType AT_ref;
 	AT_ref.set_params(param);
@@ -214,7 +218,7 @@ static int test_operations() {
 
 	MatrixType B;
 	B.set_params(param);
-	B.resize(2, 3);
+	B.resize(2, 3, &n_resizes);
 	{
 		SparseMatrix tmp;
 		set_row(tmp, 0, 1, 3, 2);
@@ -223,12 +227,16 @@ static int test_operations() {
 	}
     
     std::cout << "B created" <<std::endl;
+	std::cout << "n_resizes = " << n_resizes << std::endl;
+	std::cout << std::endl;
 
 	MatrixType C;
 	C.set_params(param);
-	MatrixType::add(A, B, C);
+	MatrixType::add(A, B, C, &n_resizes);
 
     std::cout << "C = A+B computed" <<std::endl;
+	std::cout << "n_resizes = " << n_resizes << std::endl;
+	std::cout << std::endl;
 
 	MatrixType Cref;
 	Cref.set_params(param);
@@ -259,13 +267,14 @@ static int test_operations() {
 	}
     
     std::cout << "D created" <<std::endl;
-    size_t n_multiplications, n_resizes;
+	std::cout << "n_resizes = " << n_resizes << std::endl;
+	std::cout << std::endl;
   
 	MatrixType AxD;
 	MatrixType::multiply(A, false, D, false, AxD, &n_multiplications, &n_resizes);
+	std::cout << "n_resizes = " << n_resizes << std::endl;
+	std::cout << std::endl;
 
-    std::cout << "AxD computed" <<std::endl;
-    std::cout << "N multiplications = " << n_multiplications << ", n resizes = " << n_resizes << std::endl;
 
 	MatrixType AxDref;
 	AxDref.set_params(param);
@@ -278,6 +287,42 @@ static int test_operations() {
 	}
 	
     verify_that_matrices_are_equal(AxD, AxDref);
+	
+	/*
+	{
+		
+		MatrixType P;
+		P.set_params(param);
+		P.resize(4, 4);
+		{
+			SparseMatrix tmp;
+			set_row(tmp, 0, 2, 1);
+			set_row(tmp, 1, 2, 1);
+			set_row(tmp, 2, 2, 0, 1, 2);
+			set_row(tmp, 3, 5, 1, 1, 2);
+			tmp.assign(P);
+		}
+		
+				
+		MatrixType Q;
+		Q.set_params(param);
+		Q.resize(4, 4);
+		{
+			SparseMatrix tmp;
+			set_row(tmp, 0, 2, 1, 1, 2);
+			set_row(tmp, 1, 1, 1, 1, 2);
+			set_row(tmp, 2, 2, 4, 0, 1);
+			set_row(tmp, 3, 7, 1, 1, 0);
+			tmp.assign(Q);
+		}
+		
+		MatrixType PxQ;
+		MatrixType::multiply(P, false, Q, false, PxQ, &n_multiplications, &n_resizes);
+		PxQ.print();
+		std::cout << "PxQ: n_resizes = " << n_resizes << std::endl;
+		std::cout << std::endl;
+		
+	}*/
 
   
 	MatrixType DxA;
@@ -428,7 +473,7 @@ static int test_operations() {
 	
 	}
 	
-	
+	/*
 	
 	// test rescale
 	
