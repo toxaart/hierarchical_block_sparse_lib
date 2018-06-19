@@ -67,3 +67,16 @@ void set_row(SparseMatrix & A, int rowIdx, double x1, double x2, double x3, doub
   row[6] = x7;
   A.set_row(rowIdx, row);
 }
+
+void set_row(SparseMatrix & A, int rowIdx, double x1, double x2, double x3, double x4, double x5, double x6, double x7, double x8) {
+  std::vector<double> row(8);
+  row[0] = x1;
+  row[1] = x2;
+  row[2] = x3;
+  row[3] = x4;
+  row[4] = x5;
+  row[5] = x6;
+  row[6] = x7;
+  row[7] = x8;
+  A.set_row(rowIdx, row);
+}

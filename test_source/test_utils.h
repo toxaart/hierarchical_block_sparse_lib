@@ -105,3 +105,4 @@ void set_row(SparseMatrix & A, int rowIdx, double x1, double x2, double x3, doub
 void set_row(SparseMatrix & A, int rowIdx, double x1, double x2, double x3, double x4, double x5);
 void set_row(SparseMatrix & A, int rowIdx, double x1, double x2, double x3, double x4, double x5, double x6);
 void set_row(SparseMatrix & A, int rowIdx, double x1, double x2, double x3, double x4, double x5, double x6, double x7);
+void set_row(SparseMatrix & A, int rowIdx, double x1, double x2, double x3, double x4, double x5, double x6, double x7, double x8);

@@ -290,16 +290,20 @@ static int test_operations() {
 	
 	
 	{
-		param.blocksize = 2;
+		param.blocksize = 1;
 		MatrixType P;
 		P.set_params(param);
-		P.resize(4, 4);
+		P.resize(8, 8);
 		{
 			SparseMatrix tmp;
-			set_row(tmp, 0, 2, 0);
-			set_row(tmp, 1, 2, 1);
-			set_row(tmp, 2, 2, 0, 5, 6);
-			set_row(tmp, 3, 2, 1, 7, 8);
+			set_row(tmp, 0, 2, 0, -2, 2, 2, 3, 4, 5);
+			set_row(tmp, 1, 2, 1, -1 ,2, 2, 3, 4, 5);
+			set_row(tmp, 2, 2, 0, 5, 6, 2, 3, 4, 5);
+			set_row(tmp, 3, 2, 1, 7, 8, 2, 3, 4, 5);
+			set_row(tmp, 4, 2, 1, 7, 8, 2, 3, 4, 5);
+			set_row(tmp, 5, 2, -1, 7, 8, 2, 3, 4, 5);
+			set_row(tmp, 6, 2, 1, 7, -8, 2, 3, 4, 5);
+			set_row(tmp, 7, -2, 1, 7, 8, 2, 3, 4, 5);
 			
 			tmp.assign(P);
 		}
@@ -307,13 +311,17 @@ static int test_operations() {
 				
 		MatrixType Q;
 		Q.set_params(param);
-		Q.resize(4, 4);
+		Q.resize(8, 8);
 		{
 			SparseMatrix tmp;
-			set_row(tmp, 0, 2, 2, 7, 6);
-			set_row(tmp, 1, 1, 2, 6, 5);
-			set_row(tmp, 2, 2, 2, 5, 4);
-			set_row(tmp, 3, 1, 2, 5, 4);
+			set_row(tmp, 0, 2, 0, -2, 2, 2, 3, 4, 5);
+			set_row(tmp, 1, 2, 1, -1 ,2, 2, 3, 4, 5);
+			set_row(tmp, 2, 2, 0, 5, 6, 2, -3, 4, 5);
+			set_row(tmp, 3, 2, -1, 7, 8, 2, 3, 4, 5);
+			set_row(tmp, 4, 2, 1, 7, 8, 2, 3, 4, 5);
+			set_row(tmp, 5, 2, -1, 7, 8, 2, 3, 4, -5);
+			set_row(tmp, 6, 2, 1, 7, -8, 2, 3, 4, 5);
+			set_row(tmp, 7, -2, 1, 7, 8, 2, 3, 4, 5);
 			tmp.assign(Q);
 		}
 		
@@ -323,6 +331,8 @@ static int test_operations() {
 		std::cout << "PxQ: n_resizes = " << n_resizes << std::endl;
 		std::cout << std::endl;
 		
+		
+		param.blocksize = 2	;
 	}
 
   
