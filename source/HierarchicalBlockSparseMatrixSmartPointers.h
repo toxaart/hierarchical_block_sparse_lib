@@ -134,6 +134,15 @@ namespace hbsm {
 						  std::vector<int> & cols,
 						  std::vector<Treal> & values) const;
 								
+			size_t get_size() const;
+
+			void write_to_buffer ( char * dataBuffer, size_t const bufferSize ) const;
+			void assign_from_buffer ( char * dataBuffer, size_t const bufferSize );
+
+
+			void copy(const HierarchicalBlockSparseMatrixSmartPointers<Treal> & other, size_t* no_of_resizes = NULL);
+
+			void add_scaled_identity( HierarchicalBlockSparseMatrixSmartPointers<Treal> const & other, Treal alpha);
     };
 	
 			
@@ -749,6 +758,499 @@ namespace hbsm {
 			}
 
 		}	
+
+	template<class Treal>
+		size_t HierarchicalBlockSparseMatrixSmartPointers<Treal>::get_size() const  {
+			if(empty()) return 5 * sizeof(int) + 4 * sizeof(size_t);
+
+			if(lowest_level()){
+				return 5 * sizeof(int) + 4 * sizeof(size_t) + submatrix.size() * sizeof(Treal);
+			}
+
+			size_t totalsize = 5 * sizeof(int) + 4 * sizeof(size_t); // keep sizes of children in a row!
+
+
+			if(children[0] != NULL){
+				totalsize += children[0]->get_size();
+			}
+
+
+			if(children[1] != NULL) {
+				totalsize += children[1]->get_size();
+			}
+
+
+			if(children[2] != NULL){
+				totalsize += children[2]->get_size();
+			}
+
+
+			if(children[3] != NULL){
+				totalsize += children[3]->get_size();
+			}
+
+
+			return totalsize;
+
+		}
+
+	template<class Treal>
+		void HierarchicalBlockSparseMatrixSmartPointers<Treal>::write_to_buffer(char * dataBuffer, size_t const bufferSize) const  {
+			if(bufferSize < get_size())
+				throw std::runtime_error("Error in HierarchicalBlockSparseMatrixSmartPointers<Treal>::write_to_buffer(): buffer too small.");
+
+			size_t size_of_matrix_pointer = sizeof(HierarchicalBlockSparseMatrixSmartPointers<Treal>*);
+
+			char* p = dataBuffer;
+
+			if(empty()){
+
+				std::cout << "empty case in write_to_buffer, buffer size " << bufferSize << std::endl;
+				int n_bytes_written = 0;
+
+				memcpy(p, &nRows, sizeof(int));
+				p += sizeof(int);
+				n_bytes_written += sizeof(int);
+
+				memcpy(p, &nCols, sizeof(int));
+				p += sizeof(int);
+				n_bytes_written += sizeof(int);
+
+				memcpy(p, &nRows_orig, sizeof(int));
+				p += sizeof(int);
+				n_bytes_written += sizeof(int);
+
+				memcpy(p, &nCols_orig, sizeof(int));
+				p += sizeof(int);
+				n_bytes_written += sizeof(int);
+
+				memcpy(p, &blocksize, sizeof(int));
+				p += sizeof(int);
+				n_bytes_written += sizeof(int);
+
+				//no children - write 4 zeros!
+				size_t zero_size = 0;
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
+				n_bytes_written += sizeof(size_t);
+
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
+				n_bytes_written += sizeof(size_t);
+
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
+				n_bytes_written += sizeof(size_t);
+
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
+				n_bytes_written += sizeof(size_t);
+
+				std::cout << "n_bytes_written " << n_bytes_written <<std::endl;
+
+				return;
+			}
+
+
+			if(lowest_level()){
+
+				memcpy(p, &nRows, sizeof(int));
+				p += sizeof(int);
+
+				memcpy(p, &nCols, sizeof(int));
+				p += sizeof(int);
+
+				memcpy(p, &nRows_orig, sizeof(int));
+				p += sizeof(int);
+
+				memcpy(p, &nCols_orig, sizeof(int));
+				p += sizeof(int);
+
+				memcpy(p, &blocksize, sizeof(int));
+				p += sizeof(int);
+
+				//no children - write 4 zeros!
+				size_t zero_size = 0;
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
+
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
+
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
+
+				memcpy(p, &zero_size, sizeof(size_t));
+				p += sizeof(size_t);
+
+				memcpy(p, &submatrix[0], submatrix.size() * sizeof(Treal));
+				p += submatrix.size() * sizeof(Treal);
+
+				return;
+			}
+
+			size_t size_child0 = 0, size_child1 = 0, size_child2 = 0, size_child3 = 0;
+			std::vector<char> buf_child0, buf_child1, buf_child2, buf_child3;
+
+			if(children[0] != NULL){ // if child do not exist, its size will be zero!
+				size_child0 = children[0]->get_size();
+				buf_child0.resize(size_child0);
+				children[0]->write_to_buffer(&buf_child0[0],size_child0);
+			}
+
+			if(children[1] != NULL){
+				size_child1 = children[1]->get_size();
+				buf_child1.resize(size_child1);
+				children[1]->write_to_buffer(&buf_child1[0],size_child1);
+			}
+
+			if(children[2] != NULL){
+				size_child2 = children[2]->get_size();
+				buf_child2.resize(size_child2);
+				children[2]->write_to_buffer(&buf_child2[0],size_child2);
+			}
+
+			if(children[3] != NULL){
+				size_child3 = children[3]->get_size();
+				buf_child3.resize(size_child3);
+				children[3]->write_to_buffer(&buf_child3[0],size_child3);
+			}
+
+
+			memcpy(p, &nRows, sizeof(int));
+			p += sizeof(int);
+
+			memcpy(p, &nCols, sizeof(int));
+			p += sizeof(int);
+
+			memcpy(p, &nRows_orig, sizeof(int));
+			p += sizeof(int);
+
+			memcpy(p, &nCols_orig, sizeof(int));
+			p += sizeof(int);
+
+			memcpy(p, &blocksize, sizeof(int));
+			p += sizeof(int);
+
+			// write sizes of children even if they are zeros!
+			memcpy(p, &size_child0, sizeof(size_t));
+			p += sizeof(size_t);
+
+			memcpy(p, &size_child1, sizeof(size_t));
+			p += sizeof(size_t);
+
+			memcpy(p, &size_child2, sizeof(size_t));
+			p += sizeof(size_t);
+
+			memcpy(p, &size_child3, sizeof(size_t));
+			p += sizeof(size_t);
+
+
+		   if(size_child0 > 0){ // if child size is > 0, write size and the child itself
+				memcpy(p, &buf_child0[0],  size_child0);
+				p += size_child0;
+			}
+
+			if(size_child1 > 0){
+				memcpy(p, &buf_child1[0],  size_child1);
+				p += size_child1;
+			}
+
+			if(size_child2 > 0){
+				memcpy(p, &buf_child2[0],  size_child2);
+				p += size_child2;
+			}
+
+			if(size_child3 > 0){
+				memcpy(p, &buf_child3[0],  size_child3);
+				p += size_child3;
+			}
+
+		}
+
+	template<class Treal>
+		void HierarchicalBlockSparseMatrixSmartPointers<Treal>::assign_from_buffer(char * dataBuffer, size_t const bufferSize) {
+
+			const char *p = dataBuffer;
+
+			int n_bytes_left_to_read = bufferSize;
+
+			if (bufferSize < 5 * sizeof(int) + 4 * sizeof(size_t))
+			  throw std::runtime_error("Error in HierarchicalBlockSparseMatrixSmartPointers::assign_from_buffer(): buffer too small.");
+
+
+			memcpy(&nRows, p, sizeof(int));
+			p += sizeof(int);
+			n_bytes_left_to_read -= sizeof(int);
+
+			memcpy(&nCols, p, sizeof(int));
+			p += sizeof(int);
+			n_bytes_left_to_read -= sizeof(int);
+
+			memcpy(&nRows_orig, p, sizeof(int));
+			p += sizeof(int);
+			n_bytes_left_to_read -= sizeof(int);
+
+			memcpy(&nCols_orig, p, sizeof(int));
+			p += sizeof(int);
+			n_bytes_left_to_read -= sizeof(int);
+
+			memcpy(&blocksize, p, sizeof(int));
+			p += sizeof(int);
+			n_bytes_left_to_read -= sizeof(int);
+
+			size_t child0_size, child1_size, child2_size, child3_size;
+
+			memcpy(&child0_size, p, sizeof(size_t));
+			p += sizeof(size_t);
+			n_bytes_left_to_read -= sizeof(size_t);
+
+			memcpy(&child1_size, p, sizeof(size_t));
+			p += sizeof(size_t);
+			n_bytes_left_to_read -= sizeof(size_t);
+
+			memcpy(&child2_size, p, sizeof(size_t));
+			p += sizeof(size_t);
+			n_bytes_left_to_read -= sizeof(size_t);
+
+			memcpy(&child3_size, p, sizeof(size_t));
+			p += sizeof(size_t);
+			n_bytes_left_to_read -= sizeof(size_t);
+
+			this->resize(nRows_orig, nCols_orig);
+
+			//check if buffer ended, if so, that was an empty matrix
+			if(n_bytes_left_to_read == 0){
+				std::cout << "That was an empty matrix" << std::endl;
+				return;
+			}
+
+			if(child0_size > 0){
+				if(children[0] != NULL)
+					throw std::runtime_error("Error in HierarchicalBlockSparseMatrixSmartPointers::assign_from_buffer(): non-null child exist!");
+
+				char child0_buf[child0_size];
+				memcpy(&child0_buf[0], p, child0_size);
+				p += child0_size;
+				n_bytes_left_to_read -= child0_size;
+
+				children[0] = std::make_shared<HierarchicalBlockSparseMatrixSmartPointers<Treal> >();
+				children[0]->assign_from_buffer(&child0_buf[0], child0_size);
+				children[0]->parent = this;
+
+			}
+
+			if(child1_size > 0){
+				if(children[1] != NULL)
+					throw std::runtime_error("Error in HierarchicalBlockSparseMatrixSmartPointers::assign_from_buffer(): non-null child exist!");
+
+				char child1_buf[child1_size];
+				memcpy(&child1_buf[0], p, child1_size);
+				p += child1_size;
+				n_bytes_left_to_read -= child1_size;
+
+				children[1] = std::make_shared<HierarchicalBlockSparseMatrixSmartPointers<Treal> >();
+				children[1]->assign_from_buffer(&child1_buf[0], child1_size);
+				children[1]->parent = this;
+
+			}
+
+
+			if(child2_size > 0){
+				if(children[2] != NULL)
+					throw std::runtime_error("Error in HierarchicalBlockSparseMatrixSmartPointers::assign_from_buffer(): non-null child exist!");
+
+				char child2_buf[child2_size];
+				memcpy(&child2_buf[0], p, child2_size);
+				p += child2_size;
+				n_bytes_left_to_read -= child2_size;
+
+				children[2] = std::make_shared<HierarchicalBlockSparseMatrixSmartPointers<Treal> >();
+				children[2]->assign_from_buffer(&child2_buf[0], child2_size);
+				children[2]->parent = this;
+
+			}
+
+
+			if(child3_size > 0){
+				if(children[3] != NULL)
+					throw std::runtime_error("Error in HierarchicalBlockSparseMatrixSmartPointers::assign_from_buffer(): non-null child exist!");
+
+				char child3_buf[child3_size];
+				memcpy(&child3_buf[0], p, child3_size);
+				p += child3_size;
+				n_bytes_left_to_read -= child3_size;
+
+				children[3] = std::make_shared<HierarchicalBlockSparseMatrixSmartPointers<Treal> >();
+				children[3]->assign_from_buffer(&child3_buf[0], child3_size);
+				children[3]->parent = this;
+
+			}
+
+			// at this point, if n_bytes_left_to_read is 0, then we are done, if not, then ot was a leaf matrix!
+			if(n_bytes_left_to_read == 0){
+				return;
+			}
+			else{
+
+				//std::cout << "Leaf matrix read " << std::endl;
+				assert(n_bytes_left_to_read == nRows * nCols * sizeof(Treal));
+				submatrix.resize(nRows * nCols);
+
+				memcpy(&submatrix[0], p, nRows * nCols * sizeof(Treal));
+				p += nRows * nCols * sizeof(Treal);
+
+			}
+		}
+
+	template<class Treal>
+		void HierarchicalBlockSparseMatrixSmartPointers<Treal>::copy(const HierarchicalBlockSparseMatrixSmartPointers<Treal> &other, size_t* no_of_resizes) {
+
+			if(this == &other) return; // no need to copy itself to itself
+
+			if(other.empty()){
+				this->clear();
+				return;
+			}
+
+			set_params(other.get_params());
+			resize(other.nRows_orig,other.nCols_orig, no_of_resizes);
+
+			if(other.lowest_level()){
+				memcpy(&submatrix[0], &(other.submatrix[0]), sizeof(Treal) * other.submatrix.size());
+				return;
+			}
+
+			for(int i = 0; i < 4; ++i){
+				if(children[i] != NULL)
+					throw std::runtime_error("Error in HierarchicalBlockSparseMatrixSmartPointers::copy(): non-null child exist!");
+
+				if(other.children[i] != NULL){
+					children[i] = std::make_shared<HierarchicalBlockSparseMatrixSmartPointers<Treal> >();
+					children[i]->copy(*other.children[i], no_of_resizes);
+					children[i]->parent = this;
+				}
+
+
+			}
+
+
+		}
+
+	template<class Treal>
+		void HierarchicalBlockSparseMatrixSmartPointers<Treal>::add_scaled_identity(const HierarchicalBlockSparseMatrixSmartPointers<Treal> & other, Treal alpha) {
+
+			if(other.empty()){
+				throw std::runtime_error("Error in HierarchicalBlockSparseMatrixSmartPointers::add_scaled_identity(): empty matrix as input!");
+			}
+
+			if(other.nRows != other.nCols)
+				throw std::runtime_error("Error in HierarchicalBlockSparseMatrixSmartPointers::add_scaled_identity(): non-square matrix as input!");
+
+			this->clear();
+
+			this->set_params(other.get_params());
+
+			this->resize(other.nRows_orig,other.nCols_orig);
+
+			if(other.lowest_level()){
+				memcpy(&submatrix[0], &(other.submatrix[0]), sizeof(Treal) * other.submatrix.size());
+				for(int i = 0; i < nRows; ++i){
+					submatrix[i*nRows + i] += alpha;
+				}
+
+				return;
+			}
+
+			//non-leaf case
+			if(other.children[1] != NULL){
+				children[1] = std::make_shared<HierarchicalBlockSparseMatrixSmartPointers<Treal> >();
+				children[1]->parent = this;
+				children[1]->copy(*(other.children[1]));
+			}
+
+			if(other.children[2] != NULL){
+				children[2] = std::make_shared<HierarchicalBlockSparseMatrixSmartPointers<Treal> >();
+				children[2]->parent = this;
+				children[2]->copy(*(other.children[2]));
+			}
+
+
+			if(other.children[0] != NULL){
+
+				if(children[0] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-null child0 occured");
+
+				children[0] = std::make_shared<HierarchicalBlockSparseMatrixSmartPointers<Treal> >();
+
+				children[0]->parent = this;
+
+				children[0]->add_scaled_identity(*other.children[0],alpha);
+
+			}
+			else{
+
+				if(children[0] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-null child0 occured");
+
+				children[0] = std::make_shared<HierarchicalBlockSparseMatrixSmartPointers<Treal> >();
+				children[0]->parent = this;
+				children[0]->set_params(get_params());
+				children[0]->resize(nRows/2, nCols/2);
+
+				std::vector<int> rows, cols;
+				std::vector<Treal> vals;
+
+				rows.resize(nRows/2);
+				cols.resize(nRows/2);
+				vals.resize(nRows/2);
+
+				for(int i = 0; i < nRows/2; ++i){
+					rows[i] = i;
+					cols[i] = i;
+					vals[i] = alpha;
+				}
+
+				children[0]->assign_from_vectors(rows, cols, vals);
+			}
+
+
+			if(other.children[3] != NULL){
+
+				if(children[3] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-null child3 occured");
+
+				children[3] = std::make_shared<HierarchicalBlockSparseMatrixSmartPointers<Treal> >();
+
+				children[3]->parent = this;
+
+				children[3]->add_scaled_identity(*other.children[3],alpha);
+
+			}
+			else{
+
+				if(children[3] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::add_scaled_identity(): non-null child3 occured");
+
+				children[3] = std::make_shared<HierarchicalBlockSparseMatrixSmartPointers<Treal> >();
+				children[3]->parent = this;
+				children[3]->set_params(get_params());
+				children[3]->resize(nRows/2, nCols/2);
+
+				std::vector<int> rows, cols;
+				std::vector<Treal> vals;
+
+				rows.resize(nRows/2);
+				cols.resize(nRows/2);
+				vals.resize(nRows/2);
+
+				for(int i = 0; i < nRows/2; ++i){
+					rows[i] = i;
+					cols[i] = i;
+					vals[i] = alpha;
+				}
+
+				children[3]->assign_from_vectors(rows, cols, vals);
+			}
+
+
+		}
 		
 } /* end namespace hbsm */
 

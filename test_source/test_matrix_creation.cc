@@ -123,14 +123,14 @@ static int test_creation() {
         assert(rows_nnz[1] == 6 && cols_nnz[1] == 7 && values_nnz[1] == refValue2);
 	}
 	
-    /*
+
 	size_t size = M.get_size();
     if(size != 464) // two children each 5*4 + 4*8 + 16*8 = 180, plus 2 higher levels 52 bytes each
         throw std::runtime_error("Error: wrong result from get_size().");
-	
+
 	std::vector<char> buf(size);
 	M.write_to_buffer(&buf[0], size);
-	
+
 	MatrixType B;
 	B.assign_from_buffer(&buf[0], size);
 	
@@ -159,7 +159,7 @@ static int test_creation() {
     verify_that_matrices_are_equal<MatrixType>(M,C);
     verify_that_matrices_are_equal<MatrixType>(B,C);
     
-    
+
     //test relatively large matrix and position codes
     {
         
@@ -233,7 +233,7 @@ static int test_creation() {
 		verify_that_matrices_are_equal<MatrixType>(E,D);
 
     }
-*/
+
 
 	return 0;
 	
