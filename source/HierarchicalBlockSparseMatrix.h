@@ -31,8 +31,6 @@
 #include "CudaSyncPtr.h"
 #endif
 
-
-
 // Use namespace hbsm: "hierarchical block sparse matrix library".
 namespace hbsm {
 
@@ -649,8 +647,6 @@ namespace hbsm {
 				throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_nnz: empty matrix occured.");
 			
 		    if(lowest_level()){
-				
-				//assert(submatrix.size() == nRows * nCols);
 				
 				int nnz = 0;			
 				for(int i = 0; i < submatrix.size(); ++i){
@@ -2692,7 +2688,8 @@ namespace hbsm {
             
             
         }
-            
+
+           
 } /* end namespace hbsm */
 
 #endif

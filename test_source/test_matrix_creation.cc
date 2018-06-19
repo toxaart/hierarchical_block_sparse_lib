@@ -29,11 +29,13 @@ static int test_creation() {
 	if(!M.empty())
 		throw std::runtime_error("Error: M.empty() gave wrong result.");
 
+	
 	M.resize(4,4);
 
     if(M.get_n_rows() != 4 || M.get_n_cols() != 4 )
         throw std::runtime_error("Error: M.get_n_rows() or get_n_cols() gave wrong result.");
-		
+	
+	
 	if(M.empty())
 		throw std::runtime_error("Error: M.empty() gave wrong result.");
 
@@ -55,7 +57,7 @@ static int test_creation() {
     if(M.get_n_rows() != 14|| M.get_n_cols() != 14 )
     throw std::runtime_error("Error: M.get_n_rows() or get_n_cols() gave wrong result.");
     
-
+	
 	double refValue1 = 7.7;
     double refValue2 = 1.1;
 
@@ -231,12 +233,13 @@ static int test_creation() {
 
 
 	return 0;
+	
 }
 
 
 int main() {  
 
 	return test_creation<hbsm::HierarchicalBlockSparseMatrix<double> >();
-  
+    //return test_creation<hbsm::HierarchicalBlockSparseMatrixSmartPointers<double> >();
 
 }
