@@ -2090,13 +2090,14 @@ namespace hbsm {
 			
 			Z.resize(A.nRows_orig, A.nCols_orig);
 			
-
-			
 			if(Z.lowest_level()){
-							
+				
+				if(Z.get_first_row_position() > Z.get_n_rows()-1 || Z.get_first_col_position() > Z.get_n_cols()-1) return;
 				
 				int blocksize = Z.nRows;
+			
 				int n = Z.nRows;
+								
 				if(Z.on_bottom_boundary()) n = Z.get_n_rows() % Z.blocksize; // fill only necessary elements
 		
 				for(int i = 0; i < n; ++i) Z.submatrix[i*blocksize + i] = 1.0;
@@ -2123,7 +2124,7 @@ namespace hbsm {
 					for (int k = 0; k < n; k++) 
 						Z.submatrix[i*blocksize+k] *= R;
 				}
-			   
+			
 			   return;
 			   
 			}
@@ -2135,7 +2136,7 @@ namespace hbsm {
 				inv_chol(*A.children[0], *Z.children[0]);
 			}
 			
-			if(Z.children[0] == NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::inv_chol(): smth went wrong since Z_00 is NULL!");				
+			if(Z.children[0] == NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::inv_chol(): smth went wrong since Z_00 is NULL!");	
 			
 			// R = Z_00^T * A_01
 			HierarchicalBlockSparseMatrix<Treal> R;
@@ -2193,7 +2194,7 @@ namespace hbsm {
 			
 			// Z_10 = 0 
 			assert(Z.children[1] == NULL);
-			
+				
 			return;
 			
 		}
