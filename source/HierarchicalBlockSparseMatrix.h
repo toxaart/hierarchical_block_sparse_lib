@@ -31,52 +31,7 @@
 #include "CudaSyncPtr.h"
 #endif
 
-#define DYNAMIC_MEMORY 1 
 
-
-#define PROFILING 0
-
-#if PROFILING
-
-#define UNW_LOCAL_ONLY
-#include <cxxabi.h>
-#include <libunwind.h>
-
-
-void backtrace() {
-  unw_cursor_t cursor;
-  unw_context_t context;
-
-  // Initialize cursor to current frame for local unwinding.
-  unw_getcontext(&context);
-  unw_init_local(&cursor, &context);
-
-  // Unwind frames one by one, going up the frame stack.
-  while (unw_step(&cursor) > 0) {
-    unw_word_t offset, pc;
-    unw_get_reg(&cursor, UNW_REG_IP, &pc);
-    if (pc == 0) {
-      break;
-    }
-    std::printf("0x%lx:", pc);
-
-    char sym[256];
-    if (unw_get_proc_name(&cursor, sym, sizeof(sym), &offset) == 0) {
-      char* nameptr = sym;
-      int status;
-      char* demangled = abi::__cxa_demangle(sym, nullptr, nullptr, &status);
-      if (status == 0) {
-        nameptr = demangled;
-      }
-      std::printf(" (%s+0x%lx)\n", nameptr, offset);
-      std::free(demangled);
-    } else {
-      std::printf(" -- error: unable to obtain symbol name for this frame\n");
-    }
-  }
-}
-
-#endif
 
 // Use namespace hbsm: "hierarchical block sparse matrix library".
 namespace hbsm {
@@ -102,11 +57,8 @@ namespace hbsm {
 			 * 
 			 * */
 	
-#if DYNAMIC_MEMORY 	
 			std::vector<Treal> submatrix; // actual data is here if lowest level, otherwise is empty.
-#else
-            Treal submatrix[64*64];
-#endif		
+
 			
 			struct Transpose{
 				  const char              *bt;
@@ -159,9 +111,6 @@ namespace hbsm {
 				children[2] = NULL;
 				children[3] = NULL;
 				parent = NULL;
-#if DYNAMIC_MEMORY		                
-				//submatrix.clear();
-#endif
 			}
 			
 			
@@ -170,9 +119,7 @@ namespace hbsm {
 				if(children[1] != NULL) delete children[1];
 				if(children[2] != NULL) delete children[2];
 				if(children[3] != NULL) delete children[3];
-#if DYNAMIC_MEMORY		                
 				submatrix.clear();
-#endif                
 			}
 
 			
@@ -261,6 +208,7 @@ namespace hbsm {
 			}			
     };
 	
+	
 	template<class Treal> 
 		int HierarchicalBlockSparseMatrix<Treal>::get_n_rows() const  {
 			if(parent == NULL)
@@ -325,12 +273,8 @@ namespace hbsm {
 		}
 		
 	template<class Treal> 
-		bool HierarchicalBlockSparseMatrix<Treal>::empty() const {
-#if DYNAMIC_MEMORY		           
+		bool HierarchicalBlockSparseMatrix<Treal>::empty() const {	           
 			if(nRows == 0 && nCols == 0 && submatrix.empty() && !children_exist())
-#else
-            if(nRows == 0 && nCols == 0 && !children_exist())
-#endif               
 			  return true;
 			else
 			  return false;
@@ -414,14 +358,8 @@ namespace hbsm {
 		if(nRows_ <= blocksize && nCols_ <= blocksize){
 			nRows = blocksize;
 			nCols = blocksize;
-#if DYNAMIC_MEMORY            
 			submatrix.resize(blocksize*blocksize);
 			if(no_of_resizes != NULL) (*no_of_resizes)++;
-#else
-            for(int i = 0; i < blocksize*blocksize; ++i) submatrix[i] = 0.0; 
-#endif            
-			
-            //std::cout << "resize happened " << std::endl;
 			return;
 		}
 	
@@ -445,13 +383,6 @@ namespace hbsm {
 		
 		int virtual_size = blocksize * two_to_power_P;
 		
-		/*
-		std::cout << "maxdim / blocksize = " << maxdim / blocksize << std::endl;
-		std::cout << "maxdim % blocksize = " << maxdim % blocksize << std::endl;
-		std::cout << "n_covers = " << n_covers << std::endl;
-		std::cout << "P = " << P << std::endl;
-		std::cout << "virtual size is " << virtual_size << std::endl;
-		*/
 		
 		nRows = virtual_size;
 		nCols = virtual_size;
@@ -465,12 +396,8 @@ namespace hbsm {
 				return;
 			}
 			
-			if(lowest_level()){
-#if DYNAMIC_MEMORY                
+			if(lowest_level()){              
 				submatrix.clear();
-#else
-
-#endif               
 				nRows = 0;
 				nCols = 0;
 				if(children_exist()){
@@ -623,13 +550,7 @@ namespace hbsm {
 				}
 				
 			}
-			/*
-			std::cout << "Assign from vectors: " <<std::endl;
-			std::cout << "To child0: " << vals0.size() << " elements." << std::endl;
-			std::cout << "To child1: " << vals1.size() << " elements." << std::endl;
-			std::cout << "To child2: " << vals2.size() << " elements." << std::endl;
-			std::cout << "To child3: " << vals3.size() << " elements." << std::endl;
-			std::cout << std::endl;*/
+
 
 			if(vals0.size() > 0){
 				if(children[0] != NULL){
@@ -675,11 +596,6 @@ namespace hbsm {
                 children[3]->assign_from_vectors_general(rows3, cols3, vals3, useMax,true);
 			}		
 			
-			/*if(children[0] != NULL) std::cout << "Child0 created" << std::endl;
-			if(children[1] != NULL) std::cout << "Child1 created" << std::endl;
-			if(children[2] != NULL) std::cout << "Child2 created" << std::endl;
-			if(children[3] != NULL) std::cout << "Child3 created" << std::endl;
-			std::cout << std::endl;*/
 		}
 		
 		
@@ -707,13 +623,8 @@ namespace hbsm {
 				
 				//assert(submatrix.size() == nRows * nCols);
 				
-				Treal frob_norm_squared = 0.0;
-
-#if DYNAMIC_MEMORY				
+				Treal frob_norm_squared = 0.0;		
 				for(int i = 0; i < submatrix.size(); ++i){
-#else
-                for(int i = 0; i < blocksize*blocksize; ++i){
-#endif                    
 					frob_norm_squared += submatrix[i] * submatrix[i];
 				}
 				
@@ -741,12 +652,8 @@ namespace hbsm {
 				
 				//assert(submatrix.size() == nRows * nCols);
 				
-				int nnz = 0;
-#if DYNAMIC_MEMORY				
+				int nnz = 0;			
 				for(int i = 0; i < submatrix.size(); ++i){
-#else
-                for(int i = 0; i < blocksize*blocksize; ++i){
-#endif                    
 					if(fabs(submatrix[i]) > 0.0) nnz += 1; 
 				}
 				
@@ -783,12 +690,9 @@ namespace hbsm {
 				return;
 			}				  
 							  
-			if(lowest_level()){
-#if DYNAMIC_MEMORY       				
+			if(lowest_level()){      				
 				for(int i = 0; i < submatrix.size(); ++i){
-#else   
-                for(int i = 0; i < blocksize*blocksize; ++i){
-#endif                    
+                  
 					if(fabs(submatrix[i]) > 0.0){
 						
 						int col = i / nRows;
@@ -893,11 +797,7 @@ namespace hbsm {
 			if(empty()) return 5 * sizeof(int) + 4 * sizeof(size_t);
 			
 			if(lowest_level()){	
-#if DYNAMIC_MEMORY			
 				return 5 * sizeof(int) + 4 * sizeof(size_t) + submatrix.size() * sizeof(Treal);	
-#else
-                return 5 * sizeof(int) + 4 * sizeof(size_t) + blocksize * blocksize * sizeof(Treal);				
-#endif	
 		}
 		
 			size_t totalsize = 5 * sizeof(int) + 4 * sizeof(size_t); // keep sizes of children in a row!
@@ -1021,14 +921,9 @@ namespace hbsm {
 				memcpy(p, &zero_size, sizeof(size_t));
 				p += sizeof(size_t);
 											
-#if DYNAMIC_MEMORY
 				memcpy(p, &submatrix[0], submatrix.size() * sizeof(Treal));
 				p += submatrix.size() * sizeof(Treal);
-#else
-				memcpy(p, &submatrix[0], blocksize * blocksize * sizeof(Treal));
-				p += blocksize * blocksize * sizeof(Treal);
-#endif                
-				
+        		
 				return;
 			}
 			
@@ -1169,10 +1064,6 @@ namespace hbsm {
 				return;
 			}
 		
-			//std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;			
-			
-			//std::cout << "child0 has size " << child0_size << ", child1 " << child1_size << ", child2 " << child2_size << ", child3 " << child3_size << std::endl;
-		
 			if(child0_size > 0){
 				if(children[0] != NULL) 
 					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::assign_from_buffer(): non-null child exist!");
@@ -1186,8 +1077,6 @@ namespace hbsm {
 				children[0]->assign_from_buffer(&child0_buf[0], child0_size);
 				children[0]->parent = this;
 
-				//std::cout << "Child 0 has been read " << std::endl;
-				//std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;	
 			}
 			
 			if(child1_size > 0){
@@ -1203,8 +1092,6 @@ namespace hbsm {
 				children[1]->assign_from_buffer(&child1_buf[0], child1_size);
 				children[1]->parent = this;
 
-				//std::cout << "Child 1 has been read " << std::endl;
-				//std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;	
 			}
 			
 
@@ -1221,8 +1108,6 @@ namespace hbsm {
 				children[2]->assign_from_buffer(&child2_buf[0], child2_size);
 				children[2]->parent = this;
 
-				//std::cout << "Child 2 has been read " << std::endl;
-				//std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;	
 			}
 			
 
@@ -1239,8 +1124,6 @@ namespace hbsm {
 				children[3]->assign_from_buffer(&child3_buf[0], child3_size);
 				children[3]->parent = this;
 
-				//std::cout << "Child 3 has been read " << std::endl;
-				//std::cout << " n_bytes_left_to_read " << n_bytes_left_to_read << std::endl;	
 			}
 			
 			// at this point, if n_bytes_left_to_read is 0, then we are done, if not, then ot was a leaf matrix!
@@ -1250,12 +1133,9 @@ namespace hbsm {
 			else{
 				
 				//std::cout << "Leaf matrix read " << std::endl;
-				assert(n_bytes_left_to_read == nRows * nCols * sizeof(Treal));
-#if DYNAMIC_MEMORY				
+				assert(n_bytes_left_to_read == nRows * nCols * sizeof(Treal));			
 				submatrix.resize(nRows * nCols);
-#else
-                
-#endif                
+              
 				memcpy(&submatrix[0], p, nRows * nCols * sizeof(Treal));
 				p += nRows * nCols * sizeof(Treal);
 				
@@ -1277,13 +1157,7 @@ namespace hbsm {
             resize(other.nRows_orig,other.nCols_orig, no_of_resizes);
             
             if(other.lowest_level()){
-                
-                //assert(submatrix.size() == nRows * nCols);
-#if DYNAMIC_MEMORY                
                 memcpy(&submatrix[0], &(other.submatrix[0]), sizeof(Treal) * other.submatrix.size());
-#else
-                 memcpy(&submatrix[0], &(other.submatrix[0]), sizeof(Treal) * other.blocksize * other.blocksize);
-#endif                
                 return;
             }
             
@@ -1318,13 +1192,7 @@ namespace hbsm {
             this->resize(other.nRows_orig,other.nCols_orig);
            
             if(other.lowest_level()){
-    
-                //assert(submatrix.size() == nRows * nCols);
-#if DYNAMIC_MEMORY                
                 memcpy(&submatrix[0], &(other.submatrix[0]), sizeof(Treal) * other.submatrix.size());
-#else
-                memcpy(&submatrix[0], &(other.submatrix[0]), sizeof(Treal) * other.blocksize * other.blocksize);
-#endif    
                 for(int i = 0; i < nRows; ++i){
                     submatrix[i*nRows + i] += alpha;
                 }
@@ -1524,23 +1392,20 @@ namespace hbsm {
 			
 			if(A.lowest_level()){
 								
-				//for(int i = 0; i < A.submatrix.size(); ++i){
-				//	C.submatrix[i] = A.submatrix[i] + B.submatrix[i];
-				//}
                             
-                            int blocksize = A.blocksize;
-                            
-                            int noOfElements = blocksize*blocksize;
-                            Treal const ONEreal = 1.0;
-                            int  const ONEint  = 1;
-                            
-                            //copy A to C
-                            memcpy(&C.submatrix[0], &A.submatrix[0], sizeof(Treal) * noOfElements);
-                            
-                            // Add 1.0 * B to C.
-                            axpy(&noOfElements, &ONEreal, &B.submatrix[0], &ONEint, &C.submatrix[0], &ONEint);
+				int blocksize = A.blocksize;
 				
-                            return;
+				int noOfElements = blocksize*blocksize;
+				Treal const ONEreal = 1.0;
+				int  const ONEint  = 1;
+				
+				//copy A to C
+				memcpy(&C.submatrix[0], &A.submatrix[0], sizeof(Treal) * noOfElements);
+				
+				// Add 1.0 * B to C.
+				axpy(&noOfElements, &ONEreal, &B.submatrix[0], &ONEint, &C.submatrix[0], &ONEint);
+
+				return;
 			}
 			
 			for(int i = 0; i < 4; ++i){
@@ -1593,11 +1458,7 @@ namespace hbsm {
 	template<class Treal>
 		void HierarchicalBlockSparseMatrix<Treal>::adjust_sizes(HierarchicalBlockSparseMatrix<Treal> const  & A, HierarchicalBlockSparseMatrix<Treal> const & B){
 			
-			
-			/*
-			std::cout << "A: " << A.get_n_rows() << " " << A.get_n_cols() << std::endl;
-			std::cout << "B: " << B.get_n_rows() << " " << B.get_n_cols() << std::endl;
-			std::cout << std::endl;*/
+
 			 
 			if(A.nRows == B.nRows) return; // check if "virtual sizes are ok", enough to check single virtual size, matrix is anyway square
 			std::cout << "adjust_sizes() called " << std::endl;
@@ -1671,10 +1532,6 @@ namespace hbsm {
 			if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): non-empty matrix to write result!");				
 							
 			C.set_params(A.get_params());		
-/*
-			std::cout << "multiply(): A is " << A.nRows_orig << " " << A.nCols_orig << std::endl; 
-			std::cout << "multiply(): B is " << B.nRows_orig << " " << B.nCols_orig << std::endl; 
-			std::cout << "multiply(): C is " << C.nRows_orig << " " << C.nCols_orig << std::endl; */
 			
 			
 			if(A.get_level() == 0 && no_of_resizes != NULL) *no_of_resizes = 0;
@@ -2057,25 +1914,10 @@ namespace hbsm {
 		}
 		
 		
-		  /* inv_chol implements a left-looking inverse Cholesky algorithm */
+		 
 	template<class Treal> 
 		void HierarchicalBlockSparseMatrix<Treal>::inv_chol(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & Z){
 			
-			  /* Implements the following left-looking inverse Cholesky algorithm (Z = invChol(A)):
-			 A = [A_00 A_01
-				  A_10 A_11]
-			 Z_00 = invChol(A_00)
-			 R = Z_00^T * A_01
-			 T = Z_00 * R
-			 X = -T
-			 Y = A_10 * X
-			 Q = Y + A_11
-			 Z_11 = invChol(Q)
-			 Z_01 = X * Z_11
-			 Z_10 = 0
-			 Z = [Z_00 Z_01
-				  Z_10 Z_11]
-			*/
 			
 			if(!Z.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::inv_chol(): non-empty matrix to write result!");	
 			if(A.nRows_orig != A.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::inv_chol(): call for non-square matrix!");	
@@ -2531,15 +2373,15 @@ namespace hbsm {
 				for (int row = 0; row < M; row++){
 				  for (int col = row; col < M; col++){
 					 // Here we rely on that resize has set the elements of C to zero.
-					 /* First element in product is below  the diagonal */
+				
 					 for (int ind = 0; ind < row; ind++){
 						C.submatrix[row + col * blocksize] += A.submatrix[ind + row * blocksize] * A.submatrix[ind + col * blocksize];
 					 }
-					 /* None of the elements are below the diagonal     */
+					 
 					 for (int ind = row; ind <= col; ind++){
 						C.submatrix[row + col * blocksize] += A.submatrix[row + ind * blocksize] * A.submatrix[ind + col * blocksize];
 					 }
-					 /* Second element is below the diagonal            */
+					 
 					 for (int ind = col + 1; ind < M; ind++) {
 						C.submatrix[row + col * blocksize] += A.submatrix[row + ind * blocksize] * A.submatrix[col + ind * blocksize];
 					 }
@@ -2584,32 +2426,6 @@ namespace hbsm {
 				}
 				
 				
-				// C1 is not needed at all!
-				/*
-				
-				// C1 = A2TxA0 + A3xA2T 
-				HierarchicalBlockSparseMatrix<Treal> A2TxA0;
-				if(A.children[0] != NULL) symm_multiply(A2T, false, *A.children[0], true, A2TxA0);
-				else{
-					A2TxA0.set_params(A.get_params());
-					A2TxA0.resize(A.nRows/2, A.nCols/2);
-				}
-				
-				
-				HierarchicalBlockSparseMatrix<Treal> A3xA2T;
-				if(A.children[3] != NULL) symm_multiply(*A.children[3], true, A2T, false, A3xA2T);
-				else{
-					A3xA2T.set_params(A.get_params());
-					A3xA2T.resize(A.nRows/2, A.nCols/2);
-				}
-				
-				if(C.children[1] != NULL) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::symm_square(): matrix C has non-null child!");
-				if(A2TxA0.children_exist() || A3xA2T.children_exist() || A3xA2T.lowest_level()){
-					C.children[1] = new HierarchicalBlockSparseMatrix<Treal>();
-					C.children[1]->parent = &C;
-					add(A2TxA0, A3xA2T, *C.children[1]);
-				}
-				*/
 				
 				// C2 = A0xA2 + A2xA3
 				HierarchicalBlockSparseMatrix<Treal> A0xA2;
@@ -2816,9 +2632,6 @@ namespace hbsm {
             if(N % blocksize > 0) n_block_dim2 += 1;
             
             int total_number_of_blocks = n_block_dim1 * n_block_dim2;
-            
-			//std::cout << "Block space dim1 =  " << n_block_dim1 << ", dim2 = " << n_block_dim2 <<  std::endl;
-			//std::cout << "Total number of blocks: " << total_number_of_blocks << std::endl;
 			
             if(nnz_blocks > total_number_of_blocks) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::random_blocks():too many blocks!");
 				
@@ -2872,10 +2685,7 @@ namespace hbsm {
             col_indices.resize(element_counter);
             values.resize(element_counter);
 
-            //for(int i = 0 ; i < row_indices.size(); ++i){
-            //    std::cout << row_indices[i] << " " << col_indices[i] << " " << values[i] << std::endl;
-            //} 
-            //std::cout << std::endl;
+
             
             assign_from_vectors(row_indices, col_indices, values);
             
