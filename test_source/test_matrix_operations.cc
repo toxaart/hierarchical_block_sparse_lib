@@ -288,18 +288,19 @@ static int test_operations() {
 	
     verify_that_matrices_are_equal(AxD, AxDref);
 	
-	/*
+	
 	{
-		
+		param.blocksize = 2;
 		MatrixType P;
 		P.set_params(param);
 		P.resize(4, 4);
 		{
 			SparseMatrix tmp;
-			set_row(tmp, 0, 2, 1);
+			set_row(tmp, 0, 2, 0);
 			set_row(tmp, 1, 2, 1);
-			set_row(tmp, 2, 2, 0, 1, 2);
-			set_row(tmp, 3, 5, 1, 1, 2);
+			set_row(tmp, 2, 2, 0, 5, 6);
+			set_row(tmp, 3, 2, 1, 7, 8);
+			
 			tmp.assign(P);
 		}
 		
@@ -309,20 +310,20 @@ static int test_operations() {
 		Q.resize(4, 4);
 		{
 			SparseMatrix tmp;
-			set_row(tmp, 0, 2, 1, 1, 2);
-			set_row(tmp, 1, 1, 1, 1, 2);
-			set_row(tmp, 2, 2, 4, 0, 1);
-			set_row(tmp, 3, 7, 1, 1, 0);
+			set_row(tmp, 0, 2, 2, 7, 6);
+			set_row(tmp, 1, 1, 2, 6, 5);
+			set_row(tmp, 2, 2, 2, 5, 4);
+			set_row(tmp, 3, 1, 2, 5, 4);
 			tmp.assign(Q);
 		}
 		
 		MatrixType PxQ;
 		MatrixType::multiply(P, false, Q, false, PxQ, &n_multiplications, &n_resizes);
-		PxQ.print();
+		//PxQ.print();
 		std::cout << "PxQ: n_resizes = " << n_resizes << std::endl;
 		std::cout << std::endl;
 		
-	}*/
+	}
 
   
 	MatrixType DxA;
@@ -473,7 +474,7 @@ static int test_operations() {
 	
 	}
 	
-	/*
+	
 	
 	// test rescale
 	
@@ -522,6 +523,7 @@ static int test_operations() {
       set_row(tmp, 3, 0,                  0,                  0,                  0.433761784290076);
       tmp.assign(Z_ref);    
     }
+
 
 	
     verify_that_matrices_are_almost_equal(Z, Z_ref, 1e-10);
