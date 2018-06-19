@@ -179,8 +179,13 @@ int main(int argc, const char* argv[]) {
   double memUsageForAllMatricesInGB = nBytesForAllMatrices / ( 1000*1000*1000 );
   std::cout << "Expected mem usage (considering only matrix elements): " << memUsageForAllMatricesInGB << " GB" << std::endl;
   double startTime = get_wall_seconds();
-  int resultCode = test_creation<hbsm::HierarchicalBlockSparseMatrix<double> >(N, blockSize, nonzeroFraction, nMat, nRep);
+  int resultCode1 = test_creation<hbsm::HierarchicalBlockSparseMatrix<double> >(N, blockSize, nonzeroFraction, nMat, nRep);
   double secondsTaken = get_wall_seconds() - startTime;
   printf("secondsTaken = %12.3f wall seconds\n", secondsTaken);
-  return resultCode;
+
+  startTime = get_wall_seconds();
+  int resultCode2 = test_creation<hbsm::HierarchicalBlockSparseMatrixSmartPointers<double> >(N, blockSize, nonzeroFraction, nMat, nRep);
+  secondsTaken = get_wall_seconds() - startTime;
+  printf("secondsTaken = %12.3f wall seconds\n", secondsTaken);
+  return resultCode1 || resultCode2;
 }

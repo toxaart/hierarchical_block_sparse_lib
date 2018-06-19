@@ -242,7 +242,7 @@ static int test_creation() {
 
 int main() {  
 
-	//return test_creation<hbsm::HierarchicalBlockSparseMatrix<double> >();
+	return test_creation<hbsm::HierarchicalBlockSparseMatrix<double> >();
     return test_creation<hbsm::HierarchicalBlockSparseMatrixSmartPointers<double> >();
 
 }
