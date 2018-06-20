@@ -337,44 +337,10 @@ static int test_operations() {
 		param.blocksize = 2	;
 	}
 	
-	/*
-	{
+
 		
-		param.blocksize = 1;
-		MatrixType P;
-		P.set_params(param);
-		P.resize(8, 8);
-		{
-			SparseMatrix tmp;
-			set_row(tmp, 0, 2, 0);
-			set_row(tmp, 1, 2, 1);
-			set_row(tmp, 2, 2, 0, 5, 6);
-			set_row(tmp, 3, 2, 1, 7, 8);
-			tmp.assign(P);
-		}
-		
-				
-		MatrixType Q;
-		Q.set_params(param);
-		Q.resize(8, 8);
-		{
-			SparseMatrix tmp;
-			set_row(tmp, 0, 2, 0, -2, 7);
-			set_row(tmp, 1, 2, 1, -1, 4);
-			set_row(tmp, 2, 2, 5);
-			set_row(tmp, 3, 2, 9);
-			tmp.assign(Q);
-		}
-		
-		n_resizes = 0;
-		MatrixType::add_to_first(P,  Q);
-		
-		P.print();
-		std::cout << std::endl;
-		
-		
-	}*/
-/*
+	
+
   
 	MatrixType DxA;
 	MatrixType::multiply(D, false, A, false, DxA);
@@ -428,7 +394,7 @@ static int test_operations() {
 		tmp.assign(AtxA_ref);
 	}
 	verify_that_matrices_are_equal(AtxA, AtxA_ref);
-
+	
 	if (verbose)
 		std::cout << "Test multiply TT" << std::endl;
 	MatrixType AtxDt;
@@ -543,7 +509,7 @@ static int test_operations() {
 	
 	verify_that_matrices_are_equal(minus_A, minus_A_ref);
 	
-	
+
 
   if (verbose)
     std::cout << "Test inv_chol" << std::endl;
@@ -580,6 +546,7 @@ static int test_operations() {
   }
 
   test_symm_multiply<MatrixType>(param);  
+  /*
   test_symm_square<MatrixType>(param);
   test_symm_rk<MatrixType>(param);
 
