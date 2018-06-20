@@ -184,7 +184,7 @@ template<typename MatrixType>
 static int test_operations() {
   typename MatrixType::Params param;
 #if 1  
-	param.blocksize = 2; // Only for block sparse matrix
+	param.blocksize = 1; // Only for block sparse matrix
 #endif
   
   // Test add()
@@ -290,7 +290,7 @@ static int test_operations() {
 	
 	
 	{
-		param.blocksize = 1;
+		param.blocksize = 4;
 		MatrixType P;
 		P.set_params(param);
 		P.resize(8, 8);
@@ -325,8 +325,10 @@ static int test_operations() {
 			tmp.assign(Q);
 		}
 		
+		n_resizes = 0;
 		MatrixType PxQ;
 		MatrixType::multiply(P, false, Q, false, PxQ, &n_multiplications, &n_resizes);
+		//MatrixType::add(P, Q, PxQ, &n_resizes);
 		//PxQ.print();
 		std::cout << "PxQ: n_resizes = " << n_resizes << std::endl;
 		std::cout << std::endl;
@@ -334,7 +336,45 @@ static int test_operations() {
 		
 		param.blocksize = 2	;
 	}
-
+	
+	/*
+	{
+		
+		param.blocksize = 1;
+		MatrixType P;
+		P.set_params(param);
+		P.resize(8, 8);
+		{
+			SparseMatrix tmp;
+			set_row(tmp, 0, 2, 0);
+			set_row(tmp, 1, 2, 1);
+			set_row(tmp, 2, 2, 0, 5, 6);
+			set_row(tmp, 3, 2, 1, 7, 8);
+			tmp.assign(P);
+		}
+		
+				
+		MatrixType Q;
+		Q.set_params(param);
+		Q.resize(8, 8);
+		{
+			SparseMatrix tmp;
+			set_row(tmp, 0, 2, 0, -2, 7);
+			set_row(tmp, 1, 2, 1, -1, 4);
+			set_row(tmp, 2, 2, 5);
+			set_row(tmp, 3, 2, 9);
+			tmp.assign(Q);
+		}
+		
+		n_resizes = 0;
+		MatrixType::add_to_first(P,  Q);
+		
+		P.print();
+		std::cout << std::endl;
+		
+		
+	}*/
+/*
   
 	MatrixType DxA;
 	MatrixType::multiply(D, false, A, false, DxA);
@@ -743,7 +783,7 @@ static int test_operations() {
 }
 
 int main() {
-  return test_operations<hbsm::HierarchicalBlockSparseMatrix<double> >();
-  
+  //return test_operations<hbsm::HierarchicalBlockSparseMatrix<double> >();
+  return test_operations<hbsm::HierarchicalBlockSparseMatrixSP<double> >();
   
 }

@@ -184,7 +184,7 @@ int main(int argc, const char* argv[]) {
   printf("secondsTaken = %12.3f wall seconds\n", secondsTaken);
 
   startTime = get_wall_seconds();
-  int resultCode2 = test_creation<hbsm::HierarchicalBlockSparseMatrixSmartPointers<double> >(N, blockSize, nonzeroFraction, nMat, nRep);
+  int resultCode2 = test_creation<hbsm::HierarchicalBlockSparseMatrixSP<double> >(N, blockSize, nonzeroFraction, nMat, nRep);
   secondsTaken = get_wall_seconds() - startTime;
   printf("secondsTaken = %12.3f wall seconds\n", secondsTaken);
   return resultCode1 || resultCode2;
