@@ -534,7 +534,7 @@ static int test_operations() {
       throw std::runtime_error("Error: get_nnz_diag_lowest_level() gave wrong value.");
   }
 
-/*
+
   MatrixType X;
   param.blocksize = 3;
   X.set_params(param);
@@ -546,8 +546,8 @@ static int test_operations() {
   if(X.get_nnz() != 27) throw std::runtime_error("Error: random_blocks() gave wrong value.");
   
   
-
 /*
+
   if (verbose)
     std::cout << "Test get_row_sums" << std::endl;
   // Test get_col_sums()                                       
@@ -571,8 +571,9 @@ static int test_operations() {
       if(res[i] != 5 )
 	throw std::runtime_error("Error: get_row_sums() gave wrong value.");
   }
+ */
 
-
+/*
   if (verbose)
     std::cout << "Test spectral_norm" << std::endl;
   // Test spectral_norm() non-symm                                      
@@ -608,7 +609,7 @@ static int test_operations() {
     norm = A.spectral_norm(1);
     if(fabs(norm - 14.300735254) >= 1e-8)
       throw std::runtime_error("Error: spectral_norm(1) gave wrong value.");
-  }
+  }*/
 
   // // Test get_nnz_in_submatrix() non-symm  
   // {
@@ -674,7 +675,7 @@ static int test_operations() {
 
 
 
-*/
+
   std::cout << 
     "Matrix library matrix operations test finished OK." << std::endl;
   

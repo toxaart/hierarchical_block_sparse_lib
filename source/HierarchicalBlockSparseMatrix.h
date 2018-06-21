@@ -135,8 +135,7 @@ namespace hbsm {
 				     const std::vector<Treal> & values);
 			void assign_from_vectors_max(const std::vector<int> & rows,
 				     const std::vector<int> & cols,
-				     const std::vector<Treal> & values,
-					 bool use_max);	
+				     const std::vector<Treal> & values);	
 			Treal get_frob_squared() const;
 			
 			size_t get_nnz() const;
@@ -153,7 +152,7 @@ namespace hbsm {
 			size_t get_size() const;
 
 			void write_to_buffer ( char * dataBuffer, size_t const bufferSize ) const;
-			void assign_from_buffer ( char * dataBuffer, size_t const bufferSize );
+			void assign_from_buffer (const char * dataBuffer, size_t const bufferSize );
 
 			static void allocate_work_buffers(int max_dimension, int max_blocksize){}
 
@@ -185,7 +184,7 @@ namespace hbsm {
 			
 			static void transpose(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & C);
 			
-			void get_upper_triangle(HierarchicalBlockSparseMatrix<Treal> & A);
+			void get_upper_triangle(HierarchicalBlockSparseMatrix<Treal> & A) const;
 			
 			static void adjust_sizes(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> const & B);
 			
@@ -207,9 +206,58 @@ namespace hbsm {
 
 			void random_blocks(size_t nnz_blocks);
 			
+			static int get_blocksize(Params const & param, int max_dimension){return param.blocksize;}
 			
+			void get_col_sums(std::vector<Treal> & res) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_col_sums: function not yet implemented."); }
+			void get_col_sums_part(std::vector<Treal> & res, const int row_start, const int row_end) const {throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_col_sums_part: function not yet implemented.");}
+			void get_row_sums(std::vector<Treal> & res) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_row_sums: function not yet implemented."); }
+			void get_row_sums_part(std::vector<Treal> & res, const int col_start, const int col_end) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_row_sums_part: function not yet implemented."); }
+			void get_diag(std::vector<Treal> & res) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_diag: function not yet implemented."); }
+			void get_diag_part(std::vector<Treal> & res, int row_start, int row_end) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_diag_part: function not yet implemented."); }
+			void get_frob_squared_of_error_matrix(std::vector<Treal> & frob_squared_of_error_matrix, 
+					  std::vector<Treal> const & trunc_values) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_frob_squared_of_error_matrix: function not yet implemented."); }
+					  
+			void get_spectral_squared_of_error_matrix(std::vector<Treal> & spectral_squared_of_error_matrix, 
+					      std::vector<Treal> const & trunc_values,
+					      int diag, bool tr) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_spectral_squared_of_error_matrix: function not yet implemented."); }
+
+			Treal get_frob_squared_symm() const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_frob_squared_symm: function not yet implemented."); }
 			
-    };
+			void get_frob_squared_of_error_matrix_symm(std::vector<Treal> & frob_squared_of_error_matrix, 
+					       std::vector<Treal> const & trunc_values) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_frob_squared_of_error_matrix_symm: function not yet implemented."); }
+						   
+			bool frob_block_trunc(HierarchicalBlockSparseMatrix<Treal> & matrix_truncated, Treal trunc_value) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::frob_block_trunc: function not yet implemented."); }
+			bool frob_block_trunc_symm(HierarchicalBlockSparseMatrix<Treal> & matrix_truncated, Treal trunc_value) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::frob_block_trunc_symm: function not yet implemented."); }
+			void set_neg_to_zero(const HierarchicalBlockSparseMatrix<Treal> & other) { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_row_sums_part: function not yet implemented."); }
+			static void max(HierarchicalBlockSparseMatrix<Treal> const & A,
+		    HierarchicalBlockSparseMatrix<Treal> const & B,
+		    HierarchicalBlockSparseMatrix<Treal> & C) { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::max: function not yet implemented."); }
+			
+			Treal spectral_norm(int diag = 0, bool tr = false) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::spectral_norm: function not yet implemented."); }
+			
+			void get_nnz_in_submatrix(std::vector<int> & rows, 
+			      std::vector<int> & cols, 
+			      std::vector<Treal> & vals, 
+			      int M1, int M2, int N1, int N2) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::spectral_norm: function not yet implemented."); }
+				  
+			static void symm_rk_TN(HierarchicalBlockSparseMatrix<Treal> const & A,
+			   HierarchicalBlockSparseMatrix<Treal> & C) { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::symm_rk_TN: function not yet implemented."); }
+
+			static void symm_rk_NT(HierarchicalBlockSparseMatrix<Treal> const & A,
+			   HierarchicalBlockSparseMatrix<Treal> & C) { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::symm_rk_NT: function not yet implemented."); }
+
+			void symm_to_nosymm() { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::symm_to_nosymm: function not yet implemented."); }
+			
+			// Set lower triangle to zero
+			void nosymm_to_symm() { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::nosymm_to_symm: function not yet implemented."); } 
+			
+			static void submatrix_inv_chol(std::vector<real> const & A,
+				   std::vector<real> & Z,
+				   int n,
+				   int blocksize) { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::submatrix_inv_chol: function not yet implemented."); } 
+			
+
+	};
 	
 			
 	template<class Treal> 
@@ -457,27 +505,29 @@ namespace hbsm {
 			
 			std::vector<int> rows0, cols0, rows1, cols1, rows2, cols2, rows3, cols3;
             std::vector<Treal> vals0,vals1,vals2,vals3;
+			
+			int n_elements = rows.size();
             
-            rows0.reserve(rows.size());
-            cols0.reserve(rows.size());
-            vals0.reserve(rows.size());
+            rows0.reserve(n_elements);
+            cols0.reserve(n_elements);
+            vals0.reserve(n_elements);
             
-            rows1.reserve(rows.size());
-            cols1.reserve(rows.size());
-            vals1.reserve(rows.size());
+            rows1.reserve(n_elements);
+            cols1.reserve(n_elements);
+            vals1.reserve(n_elements);
             
-            rows2.reserve(rows.size());
-            cols2.reserve(rows.size());
-            vals2.reserve(rows.size());
+            rows2.reserve(n_elements);
+            cols2.reserve(n_elements);
+            vals2.reserve(n_elements);
             
-            rows3.reserve(rows.size());
-            cols3.reserve(rows.size());
-            vals3.reserve(rows.size());
+            rows3.reserve(n_elements);
+            cols3.reserve(n_elements);
+            vals3.reserve(n_elements);
 			
 			// the offset, when providing parts of vectors to the next level their "coordinates" will be shifted
 			int offset = nRows/2;
 			
-			for(size_t i = 0; i < values.size(); ++i){
+			for(size_t i = 0; i < n_elements; ++i){
 											
 				int row = rows[i];
 				int col = cols[i];
@@ -571,9 +621,8 @@ namespace hbsm {
   	template<class Treal> 
 		void HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors_max(const std::vector<int> & rows,
 				     const std::vector<int> & cols,
-				     const std::vector<Treal> & values,
-					 bool use_max) {
-			 return HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors_general(rows, cols, values, use_max, false);
+				     const std::vector<Treal> & values) {
+			 return HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors_general(rows, cols, values, true, false);
 		}	
 	
 	 template<class Treal> 
@@ -1055,7 +1104,7 @@ namespace hbsm {
 		}
 
 	template<class Treal>
-		void HierarchicalBlockSparseMatrix<Treal>::assign_from_buffer(char * dataBuffer, size_t const bufferSize) {
+		void HierarchicalBlockSparseMatrix<Treal>::assign_from_buffer(const char * dataBuffer, size_t const bufferSize) {
 
 			const char *p = dataBuffer;
 
@@ -2492,7 +2541,7 @@ template<class Treal>
 		 
 		
 	template<class Treal>
-		void HierarchicalBlockSparseMatrix<Treal>::get_upper_triangle(HierarchicalBlockSparseMatrix<Treal> & A){
+		void HierarchicalBlockSparseMatrix<Treal>::get_upper_triangle(HierarchicalBlockSparseMatrix<Treal> & A) const {
 			
 			if(get_n_rows() != get_n_cols()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::get_upper_triangle(): call for non-square matrix!");
 			
