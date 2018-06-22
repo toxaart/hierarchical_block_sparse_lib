@@ -174,24 +174,26 @@ static int test_creation() {
 		
 		rowsE.push_back(0);
 		colsE.push_back(0);
-		valsE.push_back(1);
+		valsE.push_back(-0.5);
 		
-		rowsE.push_back(2);
-		colsE.push_back(2);	
+		rowsE.push_back(6);
+		colsE.push_back(6);	
 		valsE.push_back(1);
 		
 		E.assign_from_vectors(rowsE, colsE, valsE);
 		
-		//E.print();
-		
 		int E_size = E.get_size();
-		//std::cout << "E.size() = " << E_size << std::endl;
 		std::vector<char> E_buf(E_size);
-		E.write_to_buffer(&E_buf[0], E_size);
 		
+		E.update_internal_info();
+		E.write_to_buffer(&E_buf[0], E_size);
 		
 		MatrixType E_copy;
 		E_copy.assign_from_buffer(&E_buf[0], E_size);
+		if(E.get_frob_norm_squared_internal() != E_copy.get_frob_norm_squared_internal()){
+			throw std::runtime_error("Error: wrong result from get_frob_norm_squared_internal() after assign_from_buffer().");
+		}
+
 	}
 
     //test relatively large matrix and position codes

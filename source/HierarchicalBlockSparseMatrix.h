@@ -48,7 +48,7 @@ namespace hbsm {
 			int nRows_orig; // before 'virtual size' has been computed
 			int nCols_orig; // before 'virtual size' has been computed
 			int blocksize; // size of blocks at the lowest level (blocksize x blocksize)
-			Treal frob_norm_squared;
+			Treal frob_norm_squared_internal;
 			std::shared_ptr<HierarchicalBlockSparseMatrix<real> > children[4]; // array of pointers to the next level.
 			HierarchicalBlockSparseMatrix<real>* parent; // way to go to top level;
 			/*		child0 | child2
@@ -108,7 +108,7 @@ namespace hbsm {
 			  int blocksize;
 			};
 		
-			HierarchicalBlockSparseMatrix():nRows(0), nCols(0),nRows_orig(0), nCols_orig(0), blocksize(-1), frob_norm_squared(0.0){
+			HierarchicalBlockSparseMatrix():nRows(0), nCols(0),nRows_orig(0), nCols_orig(0), blocksize(-1), frob_norm_squared_internal(0.0){
 				parent = NULL;
 			}
 						
@@ -138,6 +138,10 @@ namespace hbsm {
 				     const std::vector<int> & cols,
 				     const std::vector<Treal> & values);	
 			Treal get_frob_squared() const;
+			
+			Treal get_frob_norm_squared_internal() const {return frob_norm_squared_internal;}
+			
+			void update_internal_info();
 			
 			size_t get_nnz() const;
 
@@ -414,21 +418,21 @@ namespace hbsm {
 			
 		    if(lowest_level()){
 				
-				Treal frob_norm_squared = 0.0;		
+				Treal frob_squared = 0.0;		
 				for(int i = 0; i < submatrix.size(); ++i){
-					frob_norm_squared += submatrix[i] * submatrix[i];
+					frob_squared += submatrix[i] * submatrix[i];
 				}
-				return frob_norm_squared;
+				return frob_squared;
 			}
 			else{
 				
-				Treal frob_norm_squared = 0.0;
+				Treal frob_squared = 0.0;
 				
 				for(int i = 0; i < 4; ++i){
-					if(children[i] != NULL) frob_norm_squared += children[i]->get_frob_squared();
+					if(children[i] != NULL) frob_squared += children[i]->get_frob_squared();
 				}
 				
-				return frob_norm_squared;
+				return frob_squared;
 			}
 			
 		}
@@ -964,7 +968,7 @@ namespace hbsm {
 				p += sizeof(int);
 				n_bytes_written += sizeof(int);
 				
-				memcpy(p, &frob_norm_squared, sizeof(Treal));
+				memcpy(p, &frob_norm_squared_internal, sizeof(Treal));
 				p += sizeof(Treal);
 				n_bytes_written += sizeof(Treal);
 
@@ -1009,7 +1013,7 @@ namespace hbsm {
 				memcpy(p, &blocksize, sizeof(int));
 				p += sizeof(int);
 				
-				memcpy(p, &frob_norm_squared, sizeof(Treal));
+				memcpy(p, &frob_norm_squared_internal, sizeof(Treal));
 				p += sizeof(Treal);
 
 				//no children - write 4 zeros!
@@ -1075,7 +1079,7 @@ namespace hbsm {
 			memcpy(p, &blocksize, sizeof(int));
 			p += sizeof(int);
 			
-			memcpy(p, &frob_norm_squared, sizeof(Treal));
+			memcpy(p, &frob_norm_squared_internal, sizeof(Treal));
 			p += sizeof(Treal);
 
 			// write sizes of children even if they are zeros!
@@ -1145,7 +1149,7 @@ namespace hbsm {
 			p += sizeof(int);
 			n_bytes_left_to_read -= sizeof(int);
 			
-			memcpy(&frob_norm_squared, p, sizeof(Treal));
+			memcpy(&frob_norm_squared_internal, p, sizeof(Treal));
 			p += sizeof(Treal);
 			n_bytes_left_to_read -= sizeof(Treal);
 
@@ -2953,6 +2957,30 @@ template<class Treal>
 				
 						  
 		  }
+		  
+	template<class Treal> 
+		void HierarchicalBlockSparseMatrix<Treal>::update_internal_info() {
+						  
+			if(empty()) return;
+			
+			frob_norm_squared_internal = 0.0;
+			
+			if(lowest_level()){
+				
+				frob_norm_squared_internal = get_frob_squared();
+				
+				return;
+			}
+			
+			for(int i = 0; i < 4; ++i){
+				if(children[i] != NULL){
+					children[i]->update_internal_info();
+					frob_norm_squared_internal += children[i]->frob_norm_squared_internal;
+				} 
+			}
+		
+			
+	    } 
 } /* end namespace hbsm */
 
 #endif
