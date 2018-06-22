@@ -125,7 +125,7 @@ static int test_creation() {
 	
 
 	size_t size = M.get_size();
-    if(size != 464) // two children each 5*4 + 4*8 + 16*8 = 180, plus 2 higher levels 52 bytes each
+    if(size != 496) // two children each 5*4 + 4*8 + 1*8 + 16*8 = 188, plus 2 higher levels 60 bytes each
         throw std::runtime_error("Error: wrong result from get_size().");
 
 	std::vector<char> buf(size);
@@ -159,6 +159,40 @@ static int test_creation() {
     verify_that_matrices_are_equal<MatrixType>(M,C);
     verify_that_matrices_are_equal<MatrixType>(B,C);
     
+	
+	
+	{
+		MatrixType E;
+		typename MatrixType::Params param_E;
+        param_E.blocksize = 2;
+		
+		E.set_params(param_E);
+		E.resize(8,8);
+		std::vector<int> rowsE;
+		std::vector<int> colsE;
+		std::vector<double> valsE;
+		
+		rowsE.push_back(0);
+		colsE.push_back(0);
+		valsE.push_back(1);
+		
+		rowsE.push_back(2);
+		colsE.push_back(2);	
+		valsE.push_back(1);
+		
+		E.assign_from_vectors(rowsE, colsE, valsE);
+		
+		//E.print();
+		
+		int E_size = E.get_size();
+		//std::cout << "E.size() = " << E_size << std::endl;
+		std::vector<char> E_buf(E_size);
+		E.write_to_buffer(&E_buf[0], E_size);
+		
+		
+		MatrixType E_copy;
+		E_copy.assign_from_buffer(&E_buf[0], E_size);
+	}
 
     //test relatively large matrix and position codes
     {

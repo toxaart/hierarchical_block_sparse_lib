@@ -48,6 +48,7 @@ namespace hbsm {
 			int nRows_orig; // before 'virtual size' has been computed
 			int nCols_orig; // before 'virtual size' has been computed
 			int blocksize; // size of blocks at the lowest level (blocksize x blocksize)
+			Treal frob_norm_squared;
 			std::shared_ptr<HierarchicalBlockSparseMatrix<real> > children[4]; // array of pointers to the next level.
 			HierarchicalBlockSparseMatrix<real>* parent; // way to go to top level;
 			/*		child0 | child2
@@ -107,7 +108,7 @@ namespace hbsm {
 			  int blocksize;
 			};
 		
-			HierarchicalBlockSparseMatrix():nRows(0), nCols(0),nRows_orig(0), nCols_orig(0), blocksize(-1){
+			HierarchicalBlockSparseMatrix():nRows(0), nCols(0),nRows_orig(0), nCols_orig(0), blocksize(-1), frob_norm_squared(0.0){
 				parent = NULL;
 			}
 						
@@ -898,13 +899,13 @@ namespace hbsm {
 
 	template<class Treal>
 		size_t HierarchicalBlockSparseMatrix<Treal>::get_size() const  {
-			if(empty()) return 5 * sizeof(int) + 4 * sizeof(size_t);
+			if(empty()) return 5 * sizeof(int) + 4 * sizeof(size_t) + 1 * sizeof(Treal); 
 
 			if(lowest_level()){
-				return 5 * sizeof(int) + 4 * sizeof(size_t) + submatrix.size() * sizeof(Treal);
+				return 5 * sizeof(int) + 4 * sizeof(size_t) + 1 * sizeof(Treal) + submatrix.size() * sizeof(Treal);
 			}
 
-			size_t totalsize = 5 * sizeof(int) + 4 * sizeof(size_t); // keep sizes of children in a row!
+			size_t totalsize = 5 * sizeof(int) + 4 * sizeof(size_t) + 1 * sizeof(Treal); // keep sizes of children in a row!
 
 
 			if(children[0] != NULL){
@@ -936,8 +937,6 @@ namespace hbsm {
 			if(bufferSize < get_size())
 				throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::write_to_buffer(): buffer too small.");
 
-			size_t size_of_matrix_pointer = sizeof(HierarchicalBlockSparseMatrix<Treal>*);
-
 			char* p = dataBuffer;
 
 			if(empty()){
@@ -964,6 +963,10 @@ namespace hbsm {
 				memcpy(p, &blocksize, sizeof(int));
 				p += sizeof(int);
 				n_bytes_written += sizeof(int);
+				
+				memcpy(p, &frob_norm_squared, sizeof(Treal));
+				p += sizeof(Treal);
+				n_bytes_written += sizeof(Treal);
 
 				//no children - write 4 zeros!
 				size_t zero_size = 0;
@@ -1005,6 +1008,9 @@ namespace hbsm {
 
 				memcpy(p, &blocksize, sizeof(int));
 				p += sizeof(int);
+				
+				memcpy(p, &frob_norm_squared, sizeof(Treal));
+				p += sizeof(Treal);
 
 				//no children - write 4 zeros!
 				size_t zero_size = 0;
@@ -1068,6 +1074,9 @@ namespace hbsm {
 
 			memcpy(p, &blocksize, sizeof(int));
 			p += sizeof(int);
+			
+			memcpy(p, &frob_norm_squared, sizeof(Treal));
+			p += sizeof(Treal);
 
 			// write sizes of children even if they are zeros!
 			memcpy(p, &size_child0, sizeof(size_t));
@@ -1135,6 +1144,10 @@ namespace hbsm {
 			memcpy(&blocksize, p, sizeof(int));
 			p += sizeof(int);
 			n_bytes_left_to_read -= sizeof(int);
+			
+			memcpy(&frob_norm_squared, p, sizeof(Treal));
+			p += sizeof(Treal);
+			n_bytes_left_to_read -= sizeof(Treal);
 
 			size_t child0_size, child1_size, child2_size, child3_size;
 
@@ -1175,6 +1188,7 @@ namespace hbsm {
 				children[0]->assign_from_buffer(&child0_buf[0], child0_size);
 				children[0]->parent = this;
 
+				//std::cout << "Child0 is read, n_bytes_left_to_read = " << n_bytes_left_to_read << std::endl;
 			}
 
 			if(child1_size > 0){
@@ -1189,6 +1203,8 @@ namespace hbsm {
 				children[1] = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
 				children[1]->assign_from_buffer(&child1_buf[0], child1_size);
 				children[1]->parent = this;
+				
+				//std::cout << "Child1 is read, n_bytes_left_to_read = " << n_bytes_left_to_read << std::endl;
 
 			}
 
@@ -1205,6 +1221,8 @@ namespace hbsm {
 				children[2] = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
 				children[2]->assign_from_buffer(&child2_buf[0], child2_size);
 				children[2]->parent = this;
+				
+				//std::cout << "Child2 is read, n_bytes_left_to_read = " << n_bytes_left_to_read << std::endl;
 
 			}
 
@@ -1221,10 +1239,12 @@ namespace hbsm {
 				children[3] = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
 				children[3]->assign_from_buffer(&child3_buf[0], child3_size);
 				children[3]->parent = this;
+				
+				//std::cout << "Child3 is read, n_bytes_left_to_read = " << n_bytes_left_to_read << std::endl;
 
 			}
 
-			// at this point, if n_bytes_left_to_read is 0, then we are done, if not, then ot was a leaf matrix!
+			// at this point, if n_bytes_left_to_read is 0, then we are done, if not, then it was a leaf matrix!
 			if(n_bytes_left_to_read == 0){
 				return;
 			}
