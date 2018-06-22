@@ -215,7 +215,7 @@ namespace hbsm {
 			void get_diag(std::vector<Treal> & res) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_diag: function not yet implemented."); }
 			void get_diag_part(std::vector<Treal> & res, int row_start, int row_end) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_diag_part: function not yet implemented."); }
 			void get_frob_squared_of_error_matrix(std::vector<Treal> & frob_squared_of_error_matrix, 
-					  std::vector<Treal> const & trunc_values) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_frob_squared_of_error_matrix: function not yet implemented."); }
+					  std::vector<Treal> const & trunc_values) const;
 					  
 			void get_spectral_squared_of_error_matrix(std::vector<Treal> & spectral_squared_of_error_matrix, 
 					      std::vector<Treal> const & trunc_values,
@@ -311,6 +311,8 @@ namespace hbsm {
 	template<class Treal> 
 		void HierarchicalBlockSparseMatrix<Treal>::resize(int nRows_, int nCols_, size_t* no_of_resizes) {
 		assert(blocksize > 0);
+		
+		clear();
 		
 		nRows_orig = nRows_; // only top level contains true size, rest have duplicates of nRows and nCols
 		nCols_orig = nCols_;
@@ -2888,6 +2890,49 @@ template<class Treal>
             return nnz;
             
         }	
+		
+		
+	template<class Treal> 
+		void HierarchicalBlockSparseMatrix<Treal>::get_frob_squared_of_error_matrix(std::vector<Treal> & frob_squared_of_error_matrix, 
+					  std::vector<Treal> const & trunc_values) const{
+						  
+				// frob_squared_of_error_matrix[i] is a frob norm squared of the matrix with all blocks which have frob norm > trunc_values[i] removed
+				// IT CONTRADICTS WITH WHAT IS WRITTEN IN BLOCK SPARSE MATRIX LIB, PROBABLY A MISTAKE THERE!		
+				
+				if(lowest_level()){
+					
+					Treal block_frob_norm_squared = get_frob_squared();
+					Treal block_frob_norm = std::sqrt(block_frob_norm_squared);
+					
+					for(int i = 0; i < trunc_values.size(); ++i){
+						if(block_frob_norm < trunc_values[i]) frob_squared_of_error_matrix[i] += block_frob_norm_squared;
+					}
+					
+					
+					return;
+				}
+				
+
+			    std::vector<Treal> frob_squared_of_error_matrix_child0, frob_squared_of_error_matrix_child1, frob_squared_of_error_matrix_child2, frob_squared_of_error_matrix_child3;
+				frob_squared_of_error_matrix_child0.resize(trunc_values.size());
+				frob_squared_of_error_matrix_child1.resize(trunc_values.size());
+				frob_squared_of_error_matrix_child2.resize(trunc_values.size());
+				frob_squared_of_error_matrix_child3.resize(trunc_values.size());
+				
+				if(children[0] != NULL) children[0]->get_frob_squared_of_error_matrix(frob_squared_of_error_matrix_child0, trunc_values);
+				if(children[1] != NULL) children[1]->get_frob_squared_of_error_matrix(frob_squared_of_error_matrix_child1, trunc_values);
+				if(children[2] != NULL) children[2]->get_frob_squared_of_error_matrix(frob_squared_of_error_matrix_child2, trunc_values);
+				if(children[3] != NULL) children[3]->get_frob_squared_of_error_matrix(frob_squared_of_error_matrix_child3, trunc_values);
+				
+				frob_squared_of_error_matrix.resize(trunc_values.size());
+				
+				for(int i = 0; i < trunc_values.size(); ++i){
+					frob_squared_of_error_matrix[i] = frob_squared_of_error_matrix_child0[i] + frob_squared_of_error_matrix_child1[i] +
+												frob_squared_of_error_matrix_child2[i] + frob_squared_of_error_matrix_child3[i];
+				}
+				
+						  
+		  }
 } /* end namespace hbsm */
 
 #endif
