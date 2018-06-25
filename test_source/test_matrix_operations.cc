@@ -546,6 +546,69 @@ static int test_operations() {
   if(X.get_nnz() != 27) throw std::runtime_error("Error: random_blocks() gave wrong value.");
   
   
+  
+  {//Test SpAMM
+	
+	param.blocksize = 2;	
+	
+	MatrixType As;
+	As.set_params(param);
+	As.resize(4, 4, &n_resizes);	
+	{
+		SparseMatrix tmp;
+		set_row(tmp, 0, 1, 2, 0.1, 0.1);
+		set_row(tmp, 1, 2, 1, 0.1, 0.1);
+		set_row(tmp, 2, 3, 1, 0, 0);
+		set_row(tmp, 3, 5, 1, 0, 0.1);
+		tmp.assign(As);
+	}
+	
+	MatrixType Bs;
+	Bs.set_params(param);
+	Bs.resize(4, 4, &n_resizes);	
+	{
+		SparseMatrix tmp;
+		set_row(tmp, 0, 1, 6, 5, 0);
+		set_row(tmp, 1, 0, 1, 2, 1);
+		set_row(tmp, 2, 2, 1, 0.1, 0.1);
+		set_row(tmp, 3, 0, 1, 0.1, 0.1);
+		tmp.assign(Bs);
+	}
+	
+	MatrixType AsxBs;
+	MatrixType::spamm(As, false, Bs, false, AsxBs, 0.2, false, &n_multiplications, &n_resizes);
+
+	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
+	  
+	MatrixType AsxBs_ref;
+	AsxBs_ref.set_params(param);
+	AsxBs_ref.resize(4, 4, &n_resizes);	
+	{
+		SparseMatrix tmp;
+		set_row(tmp, 0, 1.2, 8.2, 9, 2);
+		set_row(tmp, 1, 2.2, 13.2, 12, 1);
+		set_row(tmp, 2, 3, 19, 17, 1);
+		set_row(tmp, 3, 5, 31.1, 27, 1);
+		tmp.assign(AsxBs_ref);
+	}  
+	  
+	verify_that_matrices_are_equal(AsxBs_ref, AsxBs);	  
+	
+	MatrixType AsxBsT;
+	MatrixType::spamm(As, false, Bs, true, AsxBsT, 0.2, false, &n_multiplications, &n_resizes);
+	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
+	
+	MatrixType AsTxBs;
+	MatrixType::spamm(As, true, Bs, false, AsTxBs, 0.2, false, &n_multiplications, &n_resizes);
+	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
+	
+	
+	MatrixType AsTxBsT;
+	MatrixType::spamm(As, true, Bs, true, AsTxBsT, 0.2, false, &n_multiplications, &n_resizes);
+	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
+  
+  }
+  
 /*
 
   if (verbose)

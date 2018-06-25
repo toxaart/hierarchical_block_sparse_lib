@@ -208,6 +208,13 @@ namespace hbsm {
 					std::cout << rows[i] << " " << cols[i] << " " << vals[i] << std::endl;
 				}
 			}
+			
+			static void spamm(HierarchicalBlockSparseMatrix<Treal> const & A, bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, bool tB,
+			HierarchicalBlockSparseMatrix<Treal>& C,
+			const Treal tau,
+			bool updated,
+			size_t* no_of_block_multiplies = NULL,
+			size_t* no_of_resizes = NULL);	
 
 			void random_blocks(size_t nnz_blocks);
 			
@@ -317,7 +324,7 @@ namespace hbsm {
 		void HierarchicalBlockSparseMatrix<Treal>::resize(int nRows_, int nCols_, size_t* no_of_resizes) {
 		assert(blocksize > 0);
 		
-		clear();
+		if(!empty()) clear();
 		
 		nRows_orig = nRows_; // only top level contains true size, rest have duplicates of nRows and nCols
 		nCols_orig = nCols_;
@@ -2980,7 +2987,595 @@ template<class Treal>
 			}
 		
 			
-	    } 
+	    }
+
+
+
+	template<class Treal>
+		void HierarchicalBlockSparseMatrix<Treal>::spamm(HierarchicalBlockSparseMatrix<Treal> const & A, bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, bool tB,
+                        HierarchicalBlockSparseMatrix<Treal>& C, const Treal tau, bool updated, size_t* no_of_block_multiplies, size_t* no_of_resizes){
+									
+			if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): non-empty matrix to write result!");
+				
+			C.set_params(A.get_params());		
+			
+			if(A.get_level() == 0 && no_of_resizes != NULL) *no_of_resizes = 0;
+			if(A.get_level() == 0 && no_of_block_multiplies != NULL) *no_of_block_multiplies = 0;
+							
+			if(!tA && !tB){
+				if(A.nCols_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");
+				C.resize(A.nRows_orig,B.nCols_orig, no_of_resizes);
+			}		
+							
+			if(!tA && tB){
+				if(A.nCols_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");
+				C.resize(A.nRows_orig,B.nRows_orig, no_of_resizes);
+			}  		
+			
+			if(tA && !tB){
+				if(A.nRows_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");
+				C.resize(A.nCols_orig,B.nCols_orig, no_of_resizes);
+			}	
+			
+			if(tA && tB){
+				if(A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");
+				C.resize(A.nCols_orig,B.nRows_orig, no_of_resizes);
+			}
+			
+
+			// when adjusting sizes it does not matter if matrices are transposed, 
+			// the number of levels made the same in both matrices,
+			// elements are the same as well as original sizes
+			adjust_sizes(A,B);
+			
+			if(!updated){
+				HierarchicalBlockSparseMatrix<Treal> & A_noconst = const_cast< HierarchicalBlockSparseMatrix<Treal> &>(A);
+				HierarchicalBlockSparseMatrix<Treal> & B_noconst = const_cast< HierarchicalBlockSparseMatrix<Treal> &>(B);
+				A_noconst.update_internal_info();
+				B_noconst.update_internal_info();
+			}
+	
+						
+			if(A.lowest_level()){
+							
+				const Treal ZERO = 0.0;
+				const Treal ONE = 1.0;
+								
+				//at this point all submatrices are square and have equal sizes!
+				if(!tA && !tB){
+					
+					int M = C.nRows;
+					int N = C.nCols;
+					int K = A.nCols;
+					const Treal *aptr = A.get_submatrix_ptr();
+					const Treal *bptr = B.get_submatrix_ptr();
+					Treal *cptr = C.get_submatrix_ptr_for_modification();
+					int lda = A.nRows;
+					int ldb = B.nRows;
+					gemm(Transpose::N().bt, Transpose::N().bt, &M, &N, &K, &ONE, aptr, &lda, bptr, &ldb, &ZERO, cptr, &M);			
+		
+				}
+				
+				
+				if(!tA && tB){
+					int M = C.nRows;
+					int N = C.nCols;
+					int K = A.nCols;
+					const Treal *aptr = A.get_submatrix_ptr();
+					const Treal *bptr = B.get_submatrix_ptr();
+					Treal *cptr = C.get_submatrix_ptr_for_modification();
+					int lda = A.nRows;
+					int ldb = B.nRows;
+					gemm(Transpose::N().bt, Transpose::T().bt, &M, &N, &K, &ONE, aptr, &lda, bptr, &ldb, &ZERO, cptr, &M);
+				}
+				
+				if(tA && !tB){
+					int M = C.nRows;
+					int N = C.nCols;
+					int K = A.nRows;
+					const Treal *aptr = A.get_submatrix_ptr();
+					const Treal *bptr = B.get_submatrix_ptr();
+					Treal *cptr = C.get_submatrix_ptr_for_modification();
+					int lda = A.nRows;
+					int ldb = B.nRows;
+					gemm(Transpose::T().bt, Transpose::N().bt, &M, &N, &K, &ONE, aptr, &lda, bptr, &ldb, &ZERO, cptr, &M);
+				}
+		
+		
+				if(tA && tB){
+					int M = C.nRows;
+					int N = C.nCols;
+					int K = A.nRows;
+					const Treal *aptr = A.get_submatrix_ptr();
+					const Treal *bptr = B.get_submatrix_ptr();
+					Treal *cptr = C.get_submatrix_ptr_for_modification();
+					int lda = A.nRows;
+					int ldb = B.nRows;
+					gemm(Transpose::T().bt, Transpose::T().bt, &M, &N, &K, &ONE, aptr, &lda, bptr, &ldb, &ZERO, cptr, &M);
+				}
+				
+				if(no_of_block_multiplies != NULL) (*no_of_block_multiplies)++;
+				return;
+			}
+			
+			
+			Treal tau_squared = tau * tau;
+			
+
+			if(!tA && !tB){
+			
+				// C0 = A0xB0 + A2xB1
+				// C1 = A1xB0 + A3xB1
+				// C2 = A0xB2 + A2xB3
+				// C3 = A1xB2 + A3xB3
+				
+				
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A0xB0;
+				if(A.children[0] != NULL && B.children[0] != NULL){
+					
+					if(A.children[0]->get_frob_norm_squared_internal() * B.children[0]->get_frob_norm_squared_internal() > tau_squared){					
+						A0xB0 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[0], tA, *B.children[0], tB, *A0xB0, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+					
+				}
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A2xB1;
+				if(A.children[2] != NULL && B.children[1] != NULL){
+					
+					if(A.children[2]->get_frob_norm_squared_internal() *  B.children[1]->get_frob_norm_squared_internal() > tau_squared){
+						A2xB1 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[2], tA, *B.children[1], tB, *A2xB1, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+					
+				}
+				
+				if(A0xB0 != NULL && A2xB1 == NULL){ C.children[0] = A0xB0; C.children[0]->parent = &C;}
+				if(A0xB0 == NULL && A2xB1 != NULL){ C.children[0] = A2xB1; C.children[0]->parent = &C;}
+                if( A0xB0 != NULL && A2xB1 != NULL){
+					add_to_first(*A0xB0, *A2xB1);
+					C.children[0] = A0xB0;
+                    C.children[0]->parent = &C;	
+                }
+				
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A1xB0;
+				if(A.children[1] != NULL && B.children[0] != NULL){
+					
+					if(A.children[1]->get_frob_norm_squared_internal() *  B.children[0]->get_frob_norm_squared_internal() > tau_squared){
+						A1xB0 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[1], tA, *B.children[0], tB, *A1xB0, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+					
+				}
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A3xB1;
+				if(A.children[3] != NULL && B.children[1] != NULL){
+					
+					if(A.children[3]->get_frob_norm_squared_internal() *  B.children[1]->get_frob_norm_squared_internal() > tau_squared){
+						A3xB1 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[3], tA, *B.children[1], tB, *A3xB1, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				
+				if(A1xB0 != NULL && A3xB1 == NULL){ C.children[1] = A1xB0; C.children[1]->parent = &C;}
+				if(A1xB0 == NULL && A3xB1 != NULL){ C.children[1] = A3xB1; C.children[1]->parent = &C;}
+                if(A1xB0 != NULL && A3xB1 != NULL){
+					add_to_first(*A1xB0, *A3xB1);
+					C.children[1] = A1xB0;
+					C.children[1]->parent = &C;
+                }			
+            
+			
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A0xB2;
+				if(A.children[0] != NULL && B.children[2] != NULL){
+					
+					if(A.children[0]->get_frob_norm_squared_internal() *  B.children[2]->get_frob_norm_squared_internal() > tau_squared){
+						A0xB2 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[0], tA, *B.children[2], tB, *A0xB2, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A2xB3;
+				if(A.children[2] != NULL && B.children[3] != NULL){
+					
+					if(A.children[2]->get_frob_norm_squared_internal() *  B.children[3]->get_frob_norm_squared_internal() > tau_squared){
+						A2xB3 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[2], tA, *B.children[3], tB, *A2xB3, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				if(A0xB2 != NULL && A2xB3 == NULL){C.children[2] = A0xB2; C.children[2]->parent = &C;}
+				if(A0xB2 == NULL && A2xB3 != NULL){C.children[2] = A2xB3; C.children[2]->parent = &C;}
+                if(A0xB2 != NULL && A2xB3 != NULL){					
+					add_to_first(*A0xB2, *A2xB3);
+					C.children[2] = A0xB2;
+					C.children[2]->parent = &C;
+                }											
+				
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A1xB2;
+				if(A.children[1] != NULL && B.children[2] != NULL){
+					
+					if(A.children[1]->get_frob_norm_squared_internal() *  B.children[2]->get_frob_norm_squared_internal() > tau_squared){
+						A1xB2 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[1], tA, *B.children[2], tB, *A1xB2, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A3xB3;
+				if(A.children[3] != NULL && B.children[3] != NULL){
+					
+					if(A.children[3]->get_frob_norm_squared_internal() *  B.children[3]->get_frob_norm_squared_internal() > tau_squared){
+						A3xB3 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[3], tA, *B.children[3], tB, *A3xB3, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				if(A1xB2 != NULL && A3xB3 == NULL){C.children[3] = A1xB2; C.children[3]->parent = &C;}
+				if(A1xB2 == NULL && A3xB3 != NULL){C.children[3] = A3xB3; C.children[3]->parent = &C;}
+				if(A1xB2 != NULL && A3xB3 != NULL){					
+					add_to_first(*A1xB2, *A3xB3);
+					C.children[3] = A1xB2;
+					C.children[3]->parent = &C;
+                }
+			
+				return;
+			}	
+
+
+			if(!tA && tB){
+				
+				// C0 = A0xB0^T + A2xB2^T
+				// C1 = A1xB0^T + A3xB2^T
+				// C2 = A0xB1^T + A2xB3^T
+				// C3 = A1xB^T + A3xB3^T
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> >  A0xB0T;
+				if(A.children[0] != NULL && B.children[0] != NULL){
+					
+					if(A.children[0]->get_frob_norm_squared_internal() *  B.children[0]->get_frob_norm_squared_internal() > tau_squared){
+						A0xB0T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[0], tA, *B.children[0], tB, *A0xB0T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A2xB2T;
+				if(A.children[2] != NULL && B.children[2] != NULL){
+					
+					if(A.children[2]->get_frob_norm_squared_internal() *  B.children[2]->get_frob_norm_squared_internal() > tau_squared){
+						A2xB2T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[2], tA, *B.children[2], tB, *A2xB2T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				if(A0xB0T != NULL && A2xB2T == NULL){C.children[0] = A0xB0T; C.children[0]->parent = &C;}
+				if(A0xB0T == NULL && A2xB2T != NULL){C.children[0] = A2xB2T; C.children[0]->parent = &C;}
+                if(A0xB0T != NULL && A2xB2T != NULL){
+                    add_to_first(*A0xB0T, *A2xB2T);
+					C.children[0] = A0xB0T;
+                    C.children[0]->parent = &C;	
+                }
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A1xB0T;
+				if(A.children[1] != NULL && B.children[0] != NULL){
+					
+					if(A.children[1]->get_frob_norm_squared_internal() *  B.children[0]->get_frob_norm_squared_internal() > tau_squared){
+						A1xB0T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[1], tA, *B.children[0], tB, *A1xB0T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A3xB2T;
+				if(A.children[3] != NULL && B.children[2] != NULL){
+					
+					if(A.children[3]->get_frob_norm_squared_internal() *  B.children[2]->get_frob_norm_squared_internal() > tau_squared){
+						A3xB2T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[3], tA, *B.children[2], tB, *A3xB2T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+
+				if(A1xB0T != NULL && A3xB2T == NULL){C.children[1] = A1xB0T; C.children[1]->parent = &C;}
+				if(A1xB0T == NULL && A3xB2T != NULL){C.children[1] = A3xB2T; C.children[1]->parent = &C;}
+                if(A1xB0T != NULL && A3xB2T != NULL){
+					add_to_first(*A1xB0T, *A3xB2T);
+                    C.children[1] = A1xB0T;
+                    C.children[1]->parent = &C;	
+                }
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A0xB1T;
+				if(A.children[0] != NULL && B.children[1] != NULL){
+					
+					if(A.children[0]->get_frob_norm_squared_internal() *  B.children[1]->get_frob_norm_squared_internal() > tau_squared){
+						A0xB1T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[0], tA, *B.children[1], tB, *A0xB1T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A2xB3T;
+				if(A.children[2] != NULL && B.children[3] != NULL){
+					
+					if(A.children[2]->get_frob_norm_squared_internal() *  B.children[3]->get_frob_norm_squared_internal() > tau_squared){
+						A2xB3T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[2], tA, *B.children[3], tB, *A2xB3T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				if(A0xB1T != NULL && A2xB3T == NULL){C.children[2] = A0xB1T; C.children[2]->parent = &C;}
+				if(A0xB1T == NULL && A2xB3T != NULL){C.children[2] = A2xB3T; C.children[2]->parent = &C;}
+                if(A0xB1T != NULL && A2xB3T != NULL){
+					add_to_first(*A0xB1T, *A2xB3T);
+                    C.children[2] = A0xB1T;
+                    C.children[2]->parent = &C;	
+                }
+										
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A1xB1T;
+				if(A.children[1] != NULL && B.children[1] != NULL){
+					
+					if(A.children[1]->get_frob_norm_squared_internal() *  B.children[1]->get_frob_norm_squared_internal() > tau_squared){
+						A1xB1T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[1], tA, *B.children[1], tB, *A1xB1T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A3xB3T;
+				if(A.children[3] != NULL && B.children[3] != NULL){
+					
+					if(A.children[3]->get_frob_norm_squared_internal() *  B.children[3]->get_frob_norm_squared_internal() > tau_squared){
+						A3xB3T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[3], tA, *B.children[3], tB, *A3xB3T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+
+                if(A1xB1T != NULL && A3xB3T == NULL){C.children[3] = A1xB1T; C.children[3]->parent = &C;}
+				if(A1xB1T == NULL && A3xB3T != NULL){C.children[3] = A3xB3T; C.children[3]->parent = &C;}
+                if(A1xB1T != NULL && A3xB3T != NULL){
+                    add_to_first(*A1xB1T, *A3xB3T);
+					C.children[3] = A1xB1T;
+                    C.children[3]->parent = &C;	
+                }
+				
+				return;
+			}
+			
+		
+			if(tA && !tB){
+				// C0 = A0^TB0 + A1^TB1
+				// C1 = A2^TB0 + A3^TB1
+				// C2 = A0^TB2 + A1^TB3
+				// C3 = A2^TB2 + A3^TB3
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A0TxB0;
+				if(A.children[0] != NULL && B.children[0] != NULL){
+					
+					if(A.children[0]->get_frob_norm_squared_internal() *  B.children[0]->get_frob_norm_squared_internal() > tau_squared){
+						A0TxB0 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[0], tA, *B.children[0], tB, *A0TxB0, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+		
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A1TxB1;
+				if(A.children[1] != NULL && B.children[1] != NULL){
+					
+					if(A.children[1]->get_frob_norm_squared_internal() *  B.children[1]->get_frob_norm_squared_internal() > tau_squared){
+						A1TxB1 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[1], tA, *B.children[1], tB, *A1TxB1, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+			
+				if(A0TxB0 != NULL && A1TxB1 == NULL){C.children[0] = A0TxB0;  C.children[0]->parent = &C;}
+			    if(A0TxB0 == NULL && A1TxB1 != NULL){C.children[0] = A1TxB1;  C.children[0]->parent = &C;}
+                if(A0TxB0 != NULL && A1TxB1 != NULL){
+					add_to_first(*A0TxB0,*A1TxB1);
+                    C.children[0] = A0TxB0;
+                    C.children[0]->parent = &C;	
+                }
+									
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A2TxB0;
+				if(A.children[2] != NULL && B.children[0] != NULL){					
+					
+					if(A.children[2]->get_frob_norm_squared_internal() *  B.children[0]->get_frob_norm_squared_internal() > tau_squared){
+						A2TxB0 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[2], tA, *B.children[0], tB, *A2TxB0, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A3TxB1;
+				if(A.children[3] != NULL && B.children[1] != NULL){
+					
+					if(A.children[3]->get_frob_norm_squared_internal() *  B.children[1]->get_frob_norm_squared_internal() > tau_squared){
+						A3TxB1 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[3], tA, *B.children[1], tB, *A3TxB1, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				if(A2TxB0 != NULL && A3TxB1 == NULL){C.children[1] = A2TxB0; C.children[1]->parent = &C;}
+				if(A2TxB0 == NULL && A3TxB1 != NULL){C.children[1] = A3TxB1; C.children[1]->parent = &C;}
+                if(A2TxB0 != NULL && A3TxB1 != NULL){
+                    add_to_first(*A2TxB0,*A3TxB1);
+					C.children[1] = A2TxB0;
+                    C.children[1]->parent = &C;	
+                }
+								
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A0TxB2;
+				if(A.children[0] != NULL && B.children[2] != NULL){
+					
+					if(A.children[0]->get_frob_norm_squared_internal() *  B.children[2]->get_frob_norm_squared_internal() > tau_squared){
+						A0TxB2 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[0], tA, *B.children[2], tB, *A0TxB2, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A1TxB3;
+				if(A.children[1] != NULL && B.children[3] != NULL){
+					
+					if(A.children[1]->get_frob_norm_squared_internal() *  B.children[3]->get_frob_norm_squared_internal() > tau_squared){
+						A1TxB3 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[1], tA, *B.children[3], tB, *A1TxB3, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+                if(A0TxB2 != NULL && A1TxB3 == NULL){C.children[2] = A0TxB2; C.children[2]->parent = &C;}
+				if(A0TxB2 == NULL && A1TxB3 != NULL){C.children[2] = A1TxB3; C.children[2]->parent = &C;}
+                if(A0TxB2 != NULL && A1TxB3 != NULL){
+                    add_to_first(*A0TxB2,*A1TxB3);
+					C.children[2] = A0TxB2;
+                    C.children[2]->parent = &C;	
+                }
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A2TxB2;
+				if(A.children[2] != NULL && B.children[2] != NULL){
+					
+					
+					if(A.children[2]->get_frob_norm_squared_internal() *  B.children[2]->get_frob_norm_squared_internal() > tau_squared){
+						A2TxB2 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[2], tA, *B.children[2], tB, *A2TxB2, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A3TxB3;
+				if(A.children[3] != NULL && B.children[3] != NULL){
+					
+					if(A.children[3]->get_frob_norm_squared_internal() *  B.children[3]->get_frob_norm_squared_internal() > tau_squared){
+						A3TxB3 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[3], tA, *B.children[3], tB, *A3TxB3, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+		
+				if(A2TxB2 != NULL && A3TxB3 == NULL){C.children[3] = A2TxB2; C.children[3]->parent = &C;}
+				if(A2TxB2 == NULL && A3TxB3 != NULL){C.children[3] = A3TxB3; C.children[3]->parent = &C;}
+                if(A2TxB2 != NULL && A3TxB3 != NULL){
+                    add_to_first(*A2TxB2,*A3TxB3);
+					C.children[3] = A2TxB2;
+                    C.children[3]->parent = &C;	
+                }
+				
+				
+				return;
+			}
+			
+		
+			if(tA && tB){
+				// C0 = A0^TB0^T + A1^TB2^T
+				// C1 = A2^TB0^T + A3^TB2^T
+				// C2 = A0^TB1^T + A1^TB3^T
+				// C3 = A2^TB1^T + A3^TB3^T
+				
+			
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A0TxB0T;
+				if(A.children[0] != NULL && B.children[0] != NULL){
+					
+					if(A.children[0]->get_frob_norm_squared_internal() *  B.children[0]->get_frob_norm_squared_internal() > tau_squared){
+						A0TxB0T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[0], tA, *B.children[0], tB, *A0TxB0T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A1TxB2T;
+				if(A.children[1] != NULL && B.children[2] != NULL){
+
+					if(A.children[1]->get_frob_norm_squared_internal() *  B.children[2]->get_frob_norm_squared_internal() > tau_squared){
+						A1TxB2T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[1], tA, *B.children[2], tB, *A1TxB2T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				if(A0TxB0T != NULL && A1TxB2T == NULL){C.children[0] = A0TxB0T; C.children[0]->parent = &C;}
+				if(A0TxB0T == NULL && A1TxB2T != NULL){C.children[0] = A1TxB2T; C.children[0]->parent = &C;}
+                if(A0TxB0T != NULL && A1TxB2T != NULL){
+                    add_to_first(*A0TxB0T,*A1TxB2T);
+					C.children[0] = A0TxB0T;
+                    C.children[0]->parent = &C;	
+                }
+					
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A2TxB0T;
+				if(A.children[2] != NULL && B.children[0] != NULL){
+					
+					if(A.children[2]->get_frob_norm_squared_internal() *  B.children[0]->get_frob_norm_squared_internal() > tau_squared){
+						A2TxB0T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[2], tA, *B.children[0], tB, *A2TxB0T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A3TxB2T;
+				if(A.children[3] != NULL && B.children[2] != NULL){
+					
+					if(A.children[3]->get_frob_norm_squared_internal() *  B.children[2]->get_frob_norm_squared_internal() > tau_squared){
+						A3TxB2T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[3], tA, *B.children[2], tB, *A3TxB2T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+
+				if(A2TxB0T != NULL && A3TxB2T == NULL){C.children[1] = A2TxB0T; C.children[1]->parent = &C;}
+				if(A2TxB0T == NULL && A3TxB2T != NULL){C.children[1] = A3TxB2T; C.children[1]->parent = &C;}
+                if(A2TxB0T != NULL && A3TxB2T != NULL){
+                    add_to_first(*A2TxB0T,*A3TxB2T);
+					C.children[1] = A2TxB0T;
+                    C.children[1]->parent = &C;	
+                }
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A0TxB1T;
+				if(A.children[0] != NULL && B.children[1] != NULL){
+
+					if(A.children[0]->get_frob_norm_squared_internal() *  B.children[1]->get_frob_norm_squared_internal() > tau_squared){
+						A0TxB1T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[0], tA, *B.children[1], tB, *A0TxB1T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A1TxB3T;
+				if(A.children[1] != NULL && B.children[3] != NULL){
+					
+					if(A.children[1]->get_frob_norm_squared_internal() *  B.children[3]->get_frob_norm_squared_internal() > tau_squared){
+						A1TxB3T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[1], tA, *B.children[3], tB, *A1TxB3T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+
+				if(A0TxB1T != NULL && A1TxB3T == NULL){C.children[2] = A0TxB1T; C.children[2]->parent = &C;}
+				if(A0TxB1T == NULL && A1TxB3T != NULL){C.children[2] = A1TxB3T; C.children[2]->parent = &C;}
+                if(A0TxB1T != NULL && A1TxB3T != NULL){
+                    add_to_first(*A0TxB1T,*A1TxB3T);
+					C.children[2] = A0TxB1T;
+                    C.children[2]->parent = &C;	
+                }
+					
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A2TxB1T;
+				if(A.children[2] != NULL && B.children[1] != NULL){
+					
+					if(A.children[2]->get_frob_norm_squared_internal() *  B.children[1]->get_frob_norm_squared_internal() > tau_squared){
+						A2TxB1T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[2], tA, *B.children[1], tB, *A2TxB1T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A3TxB3T;
+				if(A.children[3] != NULL && B.children[3] != NULL){
+					
+					if(A.children[3]->get_frob_norm_squared_internal() *  B.children[3]->get_frob_norm_squared_internal() > tau_squared){
+						A3TxB3T = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
+						spamm(*A.children[3], tA, *B.children[3], tB, *A3TxB3T, tau, true, no_of_block_multiplies, no_of_resizes);
+					}
+				}
+				
+				if(A2TxB1T != NULL && A3TxB3T == NULL){C.children[3] = A2TxB1T; C.children[3]->parent = &C;}
+				if(A2TxB1T == NULL && A3TxB3T != NULL){C.children[3] = A3TxB3T; C.children[3]->parent = &C;}
+                if(A2TxB1T != NULL && A3TxB3T != NULL){
+                    add_to_first(*A2TxB1T,*A3TxB3T);
+					C.children[3] = A2TxB1T;
+                    C.children[3]->parent = &C;	
+                }
+				
+				return;
+	
+			}
+	
+            
+			return;
+		} 
 } /* end namespace hbsm */
 
 #endif
