@@ -1182,7 +1182,7 @@ namespace hbsm {
 
 			//check if buffer ended, if so, that was an empty matrix
 			if(n_bytes_left_to_read == 0){
-				std::cout << "That was an empty matrix" << std::endl;
+				//std::cout << "That was an empty matrix" << std::endl;
 				return;
 			}
 
@@ -2994,7 +2994,7 @@ template<class Treal>
 	template<class Treal>
 		void HierarchicalBlockSparseMatrix<Treal>::spamm(HierarchicalBlockSparseMatrix<Treal> const & A, bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, bool tB,
                         HierarchicalBlockSparseMatrix<Treal>& C, const Treal tau, bool updated, size_t* no_of_block_multiplies, size_t* no_of_resizes){
-									
+							
 			if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): non-empty matrix to write result!");
 				
 			C.set_params(A.get_params());		
