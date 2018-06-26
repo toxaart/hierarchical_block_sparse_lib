@@ -609,6 +609,40 @@ static int test_operations() {
   
   }
   
+  {
+	   // test frob_block_trunc
+	  
+	  	param.blocksize = 2;	
+		MatrixType As;
+		As.set_params(param);
+		As.resize(4, 4, &n_resizes);	
+		{
+			SparseMatrix tmp;
+			set_row(tmp, 0, 1, 2, 0.1, 0.1);
+			set_row(tmp, 1, 2, 1, 0.1, 0.1);
+			set_row(tmp, 2, 3, 1, 0, 0);
+			set_row(tmp, 3, 5, 1, 0, 0.1);
+			tmp.assign(As);
+		}
+		
+		MatrixType Bs;
+		As.frob_block_trunc(Bs, 0.21);
+		
+		MatrixType Bs_ref;
+		Bs_ref.set_params(param);
+		Bs_ref.resize(4, 4, &n_resizes);	
+		{
+			SparseMatrix tmp;
+			set_row(tmp, 0, 1, 2);
+			set_row(tmp, 1, 2, 1);
+			set_row(tmp, 2, 3, 1);
+			set_row(tmp, 3, 5, 1);
+			tmp.assign(Bs_ref);
+		}
+	  
+	  verify_that_matrices_are_equal(Bs_ref, Bs);	  
+  }
+  
 /*
 
   if (verbose)

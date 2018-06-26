@@ -102,6 +102,7 @@ namespace hbsm {
 													size_t* no_of_resizes = NULL);
 			
 
+			void self_frob_block_trunc(Treal trunc_value);
 				
 	public:
 			struct Params {
@@ -238,7 +239,7 @@ namespace hbsm {
 			void get_frob_squared_of_error_matrix_symm(std::vector<Treal> & frob_squared_of_error_matrix, 
 					       std::vector<Treal> const & trunc_values) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_frob_squared_of_error_matrix_symm: function not yet implemented."); }
 						   
-			bool frob_block_trunc(HierarchicalBlockSparseMatrix<Treal> & matrix_truncated, Treal trunc_value) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::frob_block_trunc: function not yet implemented."); }
+			bool frob_block_trunc(HierarchicalBlockSparseMatrix<Treal> & matrix_truncated, Treal trunc_value) const;
 			bool frob_block_trunc_symm(HierarchicalBlockSparseMatrix<Treal> & matrix_truncated, Treal trunc_value) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::frob_block_trunc_symm: function not yet implemented."); }
 			void set_neg_to_zero(const HierarchicalBlockSparseMatrix<Treal> & other) { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_row_sums_part: function not yet implemented."); }
 			static void max(HierarchicalBlockSparseMatrix<Treal> const & A,
@@ -3576,6 +3577,37 @@ template<class Treal>
             
 			return;
 		} 
+		
+	template<class Treal>
+		void HierarchicalBlockSparseMatrix<Treal>::self_frob_block_trunc(Treal trunc_value) {
+			
+			update_internal_info();
+			
+			for(int i = 0; i < 4; ++i){
+				if(children[i] != NULL){
+					if(children[i]->get_frob_norm_squared_internal() < trunc_value*trunc_value ){
+						if(children[i].unique()) children[i].reset(); // kind of delete!
+						else throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::self_frob_block_trunc(): attempt to delete shared_ptr which is not unique!");
+					}
+					else children[i]->self_frob_block_trunc(trunc_value);
+				}
+			}
+			
+			// if arrived at lowest level, this loop will be done 4 times, but since it wont have aby children, nothing happens
+			return;
+		}	
+		
+	template<class Treal>
+		bool HierarchicalBlockSparseMatrix<Treal>::frob_block_trunc(HierarchicalBlockSparseMatrix<Treal> & matrix_truncated, Treal trunc_value) const {
+			
+			if(!matrix_truncated.empty()) matrix_truncated.clear();
+			
+			matrix_truncated.copy(*this);
+			
+			matrix_truncated.self_frob_block_trunc(trunc_value);
+			
+		}
+		
 } /* end namespace hbsm */
 
 #endif
