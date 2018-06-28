@@ -76,6 +76,10 @@ namespace hbsm {
 			
 			// computes the distance in the hierarchy from top level to current. 
 			int get_level() const; 
+			
+			
+			
+			bool squeeze_needed() const;
             
             // function returns code consisting of digits 0-3, which indicated the path from root to particular submatrix if read from left to right
             std::string get_position_code() const;
@@ -145,6 +149,8 @@ namespace hbsm {
 			void update_internal_info();
 			
 			size_t get_nnz() const;
+			
+			int get_depth() const;
 
 			// get values with indices kept in vectors rows and cols			  
 			void get_values(const std::vector<int> & rows, 
@@ -320,6 +326,41 @@ namespace hbsm {
 			}	
 				
 		}
+		
+	template<class Treal> 
+		int HierarchicalBlockSparseMatrix<Treal>::get_depth() const  {
+			
+			if(!children_exist())return get_level();
+			
+			
+			int depths[4];
+			if(children[0] != NULL) depths[0] = children[0]->get_depth();
+			else depths[0] = 0;
+			
+			if(children[1] != NULL) depths[1] = children[1]->get_depth();
+			else depths[1] = 0;
+
+			if(children[2] != NULL) depths[2] = children[2]->get_depth();
+			else depths[2] = 0;
+
+			if(children[3] != NULL) depths[3] = children[3]->get_depth();
+			else depths[3] = 0;
+			
+		    return  *std::max_element(depths,depths+4);
+		}
+		
+	template<class Treal> 
+		bool HierarchicalBlockSparseMatrix<Treal>::squeeze_needed() const  {
+			
+			for(int i = 0; i < 4; ++i){
+				if(children[i] != NULL) {
+					if(children[i]->nRows_orig > nRows_orig && children[i]->nCols_orig > nCols_orig ) return true;
+				}
+			}
+			
+			return false;
+			
+		}
 
 	template<class Treal> 
 		void HierarchicalBlockSparseMatrix<Treal>::resize(int nRows_, int nCols_, size_t* no_of_resizes) {
@@ -451,8 +492,7 @@ namespace hbsm {
 				     const std::vector<Treal> & values,
 				     bool useMax,
 					 bool boundaries_checked) {
-						 
-						 
+						 		 
 			
 			assert(blocksize > 0);
 			if(rows.size() != values.size() || cols.size() != values.size())
@@ -470,6 +510,8 @@ namespace hbsm {
 			}
 			
 			if(lowest_level()){
+				
+
                 
 				for(int i = 0; i < nCols*nRows; ++i){
 					submatrix[i] = 0.0;
@@ -511,6 +553,10 @@ namespace hbsm {
                     }
 
 				}
+				
+			
+		
+				
 
 				return;
 			}
@@ -622,7 +668,6 @@ namespace hbsm {
 				children[3]->parent = this;
                 children[3]->assign_from_vectors_general(rows3, cols3, vals3, useMax,true);
 			}		
-			
 		}
 		
 		
@@ -1040,6 +1085,8 @@ namespace hbsm {
 
 				memcpy(p, &submatrix[0], submatrix.size() * sizeof(Treal));
 				p += submatrix.size() * sizeof(Treal);
+				
+				
 
 				return;
 			}
@@ -1257,7 +1304,7 @@ namespace hbsm {
 			}
 
 			// at this point, if n_bytes_left_to_read is 0, then we are done, if not, then it was a leaf matrix!
-			if(n_bytes_left_to_read == 0){
+			if(n_bytes_left_to_read == 0){	
 				return;
 			}
 			else{
@@ -1270,6 +1317,7 @@ namespace hbsm {
 				p += nRows * nCols * sizeof(Treal);
 
 			}
+			
 		}
 
 	template<class Treal>
@@ -1426,7 +1474,7 @@ namespace hbsm {
 				       HierarchicalBlockSparseMatrix<Treal> const & B,
 				       HierarchicalBlockSparseMatrix<Treal> & C,
 					   size_t* no_of_resizes){
-		
+					   
 			
             if(!C.empty()) C.clear();               
 			
@@ -1456,7 +1504,7 @@ namespace hbsm {
 				
 				// Add 1.0 * B to C.
 				axpy(&noOfElements, &ONEreal, &B.submatrix[0], &ONEint, &C.submatrix[0], &ONEint);
-
+				
 				return;
 			}
 			
@@ -1544,9 +1592,21 @@ namespace hbsm {
 		void HierarchicalBlockSparseMatrix<Treal>::multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
                         HierarchicalBlockSparseMatrix<Treal>& C, size_t* no_of_block_multiplies, size_t* no_of_resizes){
 		      
-            
-                            
-                            
+			if(A.nRows < B.nRows){ // A is to be adjusted
+			    HierarchicalBlockSparseMatrix<Treal>  A_alias;
+				A_alias.copy(A);
+				adjust_sizes(A_alias,B);
+				multiply(A_alias, tA, B, tB, C, no_of_block_multiplies, no_of_resizes);				
+				return;
+			}
+			if(A.nRows > B.nRows){ // B is to be adjusted				
+				HierarchicalBlockSparseMatrix<Treal>  B_alias;
+				B_alias.copy(B);
+				adjust_sizes(A,B_alias);
+				multiply(A, tA, B_alias, tB, C, no_of_block_multiplies, no_of_resizes);
+				return;
+			}
+
 			if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): non-empty matrix to write result!");
 							
 			C.set_params(A.get_params());		
@@ -1574,13 +1634,6 @@ namespace hbsm {
 				if(A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");
 				C.resize(A.nCols_orig,B.nRows_orig, no_of_resizes);
 			}
-			
-
-			// when adjusting sizes it does not matter if matrices are transposed, 
-			// the number of levels made the same in both matrices,
-			// elements are the same as well as original sizes
-			adjust_sizes(A,B);
-	
 						
 			if(A.lowest_level()){
 							
@@ -1640,13 +1693,11 @@ namespace hbsm {
 					gemm(Transpose::T().bt, Transpose::T().bt, &M, &N, &K, &ONE, aptr, &lda, bptr, &ldb, &ZERO, cptr, &M);
 				}
 				
-				if(no_of_block_multiplies != NULL) (*no_of_block_multiplies)++;
+				if(no_of_block_multiplies != NULL) (*no_of_block_multiplies)++;			
+				
 				return;
 			}
-			
-			
-			
-			
+					
 
 			if(!tA && !tB){
 			
@@ -1740,6 +1791,17 @@ namespace hbsm {
 					C.children[3] = A1xB2;
 					C.children[3]->parent = &C;
                 }
+				
+				if(C.squeeze_needed()){
+					int nRows_orig = C.nRows_orig;
+					int nCols_orig = C.nCols_orig;
+					std::vector<int> rows, cols;					
+					std::vector<Treal> vals;
+					C.get_all_values(rows, cols, vals);
+					C.clear();
+					C.resize(nRows_orig, nCols_orig);
+					C.assign_from_vectors(rows,cols, vals);					
+				}
 			
 				return;
 			}	
@@ -1832,6 +1894,18 @@ namespace hbsm {
                     C.children[3]->parent = &C;	
                 }
 				
+				
+				if(C.squeeze_needed()){
+					int nRows_orig = C.nRows_orig;
+					int nCols_orig = C.nCols_orig;
+					std::vector<int> rows, cols;					
+					std::vector<Treal> vals;
+					C.get_all_values(rows, cols, vals);
+					C.clear();
+					C.resize(nRows_orig, nCols_orig);
+					C.assign_from_vectors(rows,cols, vals);					
+				}
+				
 				return;
 			}
 			
@@ -1921,6 +1995,17 @@ namespace hbsm {
 					C.children[3] = A2TxB2;
                     C.children[3]->parent = &C;	
                 }
+				
+				if(C.squeeze_needed()){
+					int nRows_orig = C.nRows_orig;
+					int nCols_orig = C.nCols_orig;
+					std::vector<int> rows, cols;					
+					std::vector<Treal> vals;
+					C.get_all_values(rows, cols, vals);
+					C.clear();
+					C.resize(nRows_orig, nCols_orig);
+					C.assign_from_vectors(rows,cols, vals);					
+				}
 				
 				
 				return;
@@ -2015,23 +2100,29 @@ namespace hbsm {
                     C.children[3]->parent = &C;	
                 }
 				
+				if(C.squeeze_needed()){
+					int nRows_orig = C.nRows_orig;
+					int nCols_orig = C.nCols_orig;
+					std::vector<int> rows, cols;					
+					std::vector<Treal> vals;
+					C.get_all_values(rows, cols, vals);
+					C.clear();
+					C.resize(nRows_orig, nCols_orig);
+					C.assign_from_vectors(rows,cols, vals);					
+				}
+				
 				return;
 	
 			}
 	
-            
+
+			
 			return;
 		}
 		
 	template<class Treal>
 		void HierarchicalBlockSparseMatrix<Treal>::adjust_sizes(HierarchicalBlockSparseMatrix<Treal> const  & A, HierarchicalBlockSparseMatrix<Treal> const & B){
-			
-
-			 
-			if(A.nRows == B.nRows) return; // check if "virtual sizes are ok", enough to check single virtual size, matrix is anyway square
-			
-			//if not, decide which matrix is smaller, adjust its size to larger one
-			
+		
 			if(A.nRows < B.nRows){ // A is to be adjusted
 				
 				std::vector<int> rows, cols;
@@ -2995,8 +3086,24 @@ template<class Treal>
 	template<class Treal>
 		void HierarchicalBlockSparseMatrix<Treal>::spamm(HierarchicalBlockSparseMatrix<Treal> const & A, bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, bool tB,
                         HierarchicalBlockSparseMatrix<Treal>& C, const Treal tau, bool updated, size_t* no_of_block_multiplies, size_t* no_of_resizes){
-							
-			if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): non-empty matrix to write result!");
+			
+			if(A.nRows < B.nRows){ // A is to be adjusted
+			    HierarchicalBlockSparseMatrix<Treal>  A_alias;
+				A_alias.copy(A);
+				adjust_sizes(A_alias,B);
+				spamm(A_alias, tA, B, tB, C, tau, updated, no_of_block_multiplies, no_of_resizes);				
+				return;
+			}
+			if(A.nRows > B.nRows){ // B is to be adjusted				
+				HierarchicalBlockSparseMatrix<Treal>  B_alias;
+				B_alias.copy(B);
+				adjust_sizes(A,B_alias);
+				spamm(A, tA, B_alias, tB, C, tau, updated, no_of_block_multiplies, no_of_resizes);
+				return;
+			}
+
+				
+			if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): non-empty matrix to write result!");
 				
 			C.set_params(A.get_params());		
 			
@@ -3004,30 +3111,24 @@ template<class Treal>
 			if(A.get_level() == 0 && no_of_block_multiplies != NULL) *no_of_block_multiplies = 0;
 							
 			if(!tA && !tB){
-				if(A.nCols_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");
+				if(A.nCols_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");
 				C.resize(A.nRows_orig,B.nCols_orig, no_of_resizes);
 			}		
 							
 			if(!tA && tB){
-				if(A.nCols_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");
+				if(A.nCols_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");
 				C.resize(A.nRows_orig,B.nRows_orig, no_of_resizes);
 			}  		
 			
 			if(tA && !tB){
-				if(A.nRows_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");
+				if(A.nRows_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");
 				C.resize(A.nCols_orig,B.nCols_orig, no_of_resizes);
 			}	
 			
 			if(tA && tB){
-				if(A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");
+				if(A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");
 				C.resize(A.nCols_orig,B.nRows_orig, no_of_resizes);
 			}
-			
-
-			// when adjusting sizes it does not matter if matrices are transposed, 
-			// the number of levels made the same in both matrices,
-			// elements are the same as well as original sizes
-			adjust_sizes(A,B);
 			
 			if(!updated){
 				HierarchicalBlockSparseMatrix<Treal> & A_noconst = const_cast< HierarchicalBlockSparseMatrix<Treal> &>(A);
@@ -3223,6 +3324,17 @@ template<class Treal>
 					C.children[3]->parent = &C;
                 }
 			
+				if(C.squeeze_needed()){
+					int nRows_orig = C.nRows_orig;
+					int nCols_orig = C.nCols_orig;
+					std::vector<int> rows, cols;					
+					std::vector<Treal> vals;
+					C.get_all_values(rows, cols, vals);
+					C.clear();
+					C.resize(nRows_orig, nCols_orig);
+					C.assign_from_vectors(rows,cols, vals);					
+				}
+			
 				return;
 			}	
 
@@ -3337,6 +3449,17 @@ template<class Treal>
 					C.children[3] = A1xB1T;
                     C.children[3]->parent = &C;	
                 }
+
+				if(C.squeeze_needed()){
+					int nRows_orig = C.nRows_orig;
+					int nCols_orig = C.nCols_orig;
+					std::vector<int> rows, cols;					
+					std::vector<Treal> vals;
+					C.get_all_values(rows, cols, vals);
+					C.clear();
+					C.resize(nRows_orig, nCols_orig);
+					C.assign_from_vectors(rows,cols, vals);					
+				}
 				
 				return;
 			}
@@ -3453,6 +3576,17 @@ template<class Treal>
                     C.children[3]->parent = &C;	
                 }
 				
+
+				if(C.squeeze_needed()){
+					int nRows_orig = C.nRows_orig;
+					int nCols_orig = C.nCols_orig;
+					std::vector<int> rows, cols;					
+					std::vector<Treal> vals;
+					C.get_all_values(rows, cols, vals);
+					C.clear();
+					C.resize(nRows_orig, nCols_orig);
+					C.assign_from_vectors(rows,cols, vals);					
+				}
 				
 				return;
 			}
@@ -3569,6 +3703,17 @@ template<class Treal>
 					C.children[3] = A2TxB1T;
                     C.children[3]->parent = &C;	
                 }
+				
+				if(C.squeeze_needed()){
+					int nRows_orig = C.nRows_orig;
+					int nCols_orig = C.nCols_orig;
+					std::vector<int> rows, cols;					
+					std::vector<Treal> vals;
+					C.get_all_values(rows, cols, vals);
+					C.clear();
+					C.resize(nRows_orig, nCols_orig);
+					C.assign_from_vectors(rows,cols, vals);					
+				}				
 				
 				return;
 	

@@ -549,7 +549,7 @@ static int test_operations() {
   
   {//Test SpAMM
 	
-	param.blocksize = 2;	
+	param.blocksize = 2 ;	
 	
 	MatrixType As;
 	As.set_params(param);
@@ -579,7 +579,7 @@ static int test_operations() {
 	MatrixType::spamm(As, false, Bs, false, AsxBs, 0.2, false, &n_multiplications, &n_resizes);
 
 	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
-	  
+	
 	MatrixType AsxBs_ref;
 	AsxBs_ref.set_params(param);
 	AsxBs_ref.resize(4, 4, &n_resizes);	
@@ -591,6 +591,8 @@ static int test_operations() {
 		set_row(tmp, 3, 5, 31.1, 27, 1);
 		tmp.assign(AsxBs_ref);
 	}  
+	
+	
 	  
 	verify_that_matrices_are_equal(AsxBs_ref, AsxBs);	  
 	
@@ -605,7 +607,7 @@ static int test_operations() {
 	
 	MatrixType AsTxBsT;
 	MatrixType::spamm(As, true, Bs, true, AsTxBsT, 0.2, false, &n_multiplications, &n_resizes);
-	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
+    std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
   
   }
   
@@ -641,6 +643,72 @@ static int test_operations() {
 		}
 	  
 	  verify_that_matrices_are_equal(Bs_ref, Bs);	  
+  }
+  
+  
+  {
+	  
+		param.blocksize = 2;	
+		MatrixType As;
+		As.set_params(param);
+		As.resize(1, 4);	
+		
+		MatrixType Bs;
+		Bs.set_params(param);
+		Bs.resize(4, 1);	
+		
+		MatrixType Cs;
+		Cs.set_params(param);
+		Cs.resize(1, 1);	
+
+		std::vector<int> rows1, cols1, rows2, cols2, rows3, cols3;
+		std::vector<double> vals1, vals2, vals3;
+		
+		
+		rows1.push_back(0);
+		cols1.push_back(0);
+		vals1.push_back(1);
+		rows1.push_back(0);
+		cols1.push_back(1);
+		vals1.push_back(2);
+		rows1.push_back(0);
+		cols1.push_back(2);
+		vals1.push_back(3);
+		rows1.push_back(0);
+		cols1.push_back(3);
+		vals1.push_back(4);
+		
+		As.assign_from_vectors(rows1,cols1,vals1);
+	
+		rows2.push_back(0);
+		cols2.push_back(0);
+		vals2.push_back(5);
+		rows2.push_back(1);
+		cols2.push_back(0);
+		vals2.push_back(6);
+		rows2.push_back(2);
+		cols2.push_back(0);
+		vals2.push_back(7);
+		rows2.push_back(3);
+		cols2.push_back(0);
+		vals2.push_back(8);
+		
+	    Bs.assign_from_vectors(rows2,cols2,vals2);
+		
+		MatrixType AsxBs;
+		
+		MatrixType::multiply(As, false, Bs, false, AsxBs);
+		
+	  
+		rows3.push_back(0);
+		cols3.push_back(0);
+		vals3.push_back(70);
+		
+		Cs.assign_from_vectors(rows3, cols3,vals3);
+	  
+	    verify_that_matrices_are_equal(AsxBs, Cs);	  
+		
+		assert(AsxBs.get_depth() == Cs.get_depth());
   }
   
 /*

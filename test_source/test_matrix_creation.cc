@@ -269,7 +269,31 @@ static int test_creation() {
 		verify_that_matrices_are_equal<MatrixType>(E,D);
 
     }
+	{
+		param.blocksize = 1;
+		MatrixType A;
+		A.set_params(param);
+		
+		A.resize(1,1);
+		
+		std::vector<int> rows,cols;
+		std::vector<double> vals;
+		rows.push_back(0);
+		cols.push_back(0);
+		vals.push_back(1.2);
+		
+		A.assign_from_vectors(rows,cols,vals);
+		
+		size_t sizeA = A.get_size();
 
+		std::vector<char> bufA(sizeA);
+		A.write_to_buffer(&bufA[0], sizeA);
+
+		MatrixType B;
+		B.assign_from_buffer(&bufA[0], sizeA);
+	
+		
+	}
 
 	return 0;
 	
