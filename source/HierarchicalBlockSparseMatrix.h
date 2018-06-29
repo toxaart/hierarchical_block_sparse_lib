@@ -518,12 +518,11 @@ namespace hbsm {
 			}
 			
 			if(lowest_level()){
-				
-
                 
-				for(int i = 0; i < nCols*nRows; ++i){
-					submatrix[i] = 0.0;
-				}
+				// submatrix is already filled with zeros!
+				//for(int i = 0; i < nCols*nRows; ++i){
+				//	submatrix[i] = 0.0;
+				//}
                 
                 int max_row_num = nRows;
                 if(on_bottom_boundary()) max_row_num = get_n_rows() % blocksize;
@@ -570,8 +569,6 @@ namespace hbsm {
 			}
 			
 			// now we have to split arrays into 4 parts and recursively apply the same procedure on children
-			
-			
 			std::vector<int> rows0, cols0, rows1, cols1, rows2, cols2, rows3, cols3;
             std::vector<Treal> vals0,vals1,vals2,vals3;
 			
@@ -632,7 +629,6 @@ namespace hbsm {
 				
 			}
 
-
 			if(vals0.size() > 0){
 				if(children[0] != NULL){
 					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::assign_from_vectors: non-null child0 matrix occured.");
@@ -675,7 +671,7 @@ namespace hbsm {
 				children[3]->resize(nRows / 2, nCols / 2);
 				children[3]->parent = this;
                 children[3]->assign_from_vectors_general(rows3, cols3, vals3, useMax,true);
-			}		
+			}	
 		}
 		
 		
@@ -1238,15 +1234,14 @@ namespace hbsm {
 
 			//check if buffer ended, if so, that was an empty matrix
 			if(n_bytes_left_to_read == 0){
-				//std::cout << "That was an empty matrix" << std::endl;
 				return;
 			}
-
+		
 			if(child0_size > 0){
 				if(children[0] != NULL)
 					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::assign_from_buffer(): non-null child exist!");
 
-				char child0_buf[child0_size];
+				std::vector<char> child0_buf(child0_size);
 				memcpy(&child0_buf[0], p, child0_size);
 				p += child0_size;
 				n_bytes_left_to_read -= child0_size;
@@ -1254,15 +1249,15 @@ namespace hbsm {
 				children[0] = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
 				children[0]->assign_from_buffer(&child0_buf[0], child0_size);
 				children[0]->parent = this;
-
-				//std::cout << "Child0 is read, n_bytes_left_to_read = " << n_bytes_left_to_read << std::endl;
+				
 			}
+			
 
 			if(child1_size > 0){
 				if(children[1] != NULL)
 					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::assign_from_buffer(): non-null child exist!");
 
-				char child1_buf[child1_size];
+				std::vector<char> child1_buf(child1_size);
 				memcpy(&child1_buf[0], p, child1_size);
 				p += child1_size;
 				n_bytes_left_to_read -= child1_size;
@@ -1270,8 +1265,6 @@ namespace hbsm {
 				children[1] = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
 				children[1]->assign_from_buffer(&child1_buf[0], child1_size);
 				children[1]->parent = this;
-				
-				//std::cout << "Child1 is read, n_bytes_left_to_read = " << n_bytes_left_to_read << std::endl;
 
 			}
 
@@ -1280,7 +1273,7 @@ namespace hbsm {
 				if(children[2] != NULL)
 					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::assign_from_buffer(): non-null child exist!");
 
-				char child2_buf[child2_size];
+				std::vector<char> child2_buf(child2_size);
 				memcpy(&child2_buf[0], p, child2_size);
 				p += child2_size;
 				n_bytes_left_to_read -= child2_size;
@@ -1288,8 +1281,6 @@ namespace hbsm {
 				children[2] = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
 				children[2]->assign_from_buffer(&child2_buf[0], child2_size);
 				children[2]->parent = this;
-				
-				//std::cout << "Child2 is read, n_bytes_left_to_read = " << n_bytes_left_to_read << std::endl;
 
 			}
 
@@ -1298,7 +1289,7 @@ namespace hbsm {
 				if(children[3] != NULL)
 					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::assign_from_buffer(): non-null child exist!");
 
-				char child3_buf[child3_size];
+				std::vector<char> child3_buf(child3_size);
 				memcpy(&child3_buf[0], p, child3_size);
 				p += child3_size;
 				n_bytes_left_to_read -= child3_size;
@@ -1306,8 +1297,6 @@ namespace hbsm {
 				children[3] = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
 				children[3]->assign_from_buffer(&child3_buf[0], child3_size);
 				children[3]->parent = this;
-				
-				//std::cout << "Child3 is read, n_bytes_left_to_read = " << n_bytes_left_to_read << std::endl;
 
 			}
 
@@ -1317,7 +1306,6 @@ namespace hbsm {
 			}
 			else{
 
-				//std::cout << "Leaf matrix read " << std::endl;
 				assert(n_bytes_left_to_read == nRows * nCols * sizeof(Treal));
 				submatrix.resize(nRows * nCols);
 
