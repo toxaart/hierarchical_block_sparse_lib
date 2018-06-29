@@ -76,10 +76,6 @@ namespace hbsm {
 			
 			// computes the distance in the hierarchy from top level to current. 
 			int get_level() const; 
-			
-			
-			
-			bool squeeze_needed() const;
             
             // function returns code consisting of digits 0-3, which indicated the path from root to particular submatrix if read from left to right
             std::string get_position_code() const;
@@ -151,6 +147,8 @@ namespace hbsm {
 			size_t get_nnz() const;
 			
 			int get_depth() const;
+			
+			int expected_depth() const;
 
 			// get values with indices kept in vectors rows and cols			  
 			void get_values(const std::vector<int> & rows, 
@@ -350,15 +348,25 @@ namespace hbsm {
 		}
 		
 	template<class Treal> 
-		bool HierarchicalBlockSparseMatrix<Treal>::squeeze_needed() const  {
+		int HierarchicalBlockSparseMatrix<Treal>::expected_depth() const  {
 			
-			for(int i = 0; i < 4; ++i){
-				if(children[i] != NULL) {
-					if(children[i]->nRows_orig > nRows_orig && children[i]->nCols_orig > nCols_orig ) return true;
-				}
+			if(nRows_orig <= blocksize && nCols_orig <= blocksize) return 0;
+			
+			int maxdim = ((nRows_orig > nCols_orig) ? nRows_orig : nCols_orig);
+			
+			//how many times block covers maxdim
+			int n_covers = maxdim / blocksize;
+			if(maxdim % blocksize != 0) n_covers += 1;
+			
+			// now we need to find P such that 2^(P-1) <= n_covers <= 2^P
+			int P = 1;
+			int two_to_power_P = 2;
+			while(n_covers >  two_to_power_P){
+				two_to_power_P *= 2;
+				P += 1;
 			}
 			
-			return false;
+			return P;
 			
 		}
 
@@ -1591,7 +1599,7 @@ namespace hbsm {
 	template<class Treal>
 		void HierarchicalBlockSparseMatrix<Treal>::multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
                         HierarchicalBlockSparseMatrix<Treal>& C, size_t* no_of_block_multiplies, size_t* no_of_resizes){
-		      
+							
 			if(A.nRows < B.nRows){ // A is to be adjusted
 			    HierarchicalBlockSparseMatrix<Treal>  A_alias;
 				A_alias.copy(A);
@@ -1634,6 +1642,8 @@ namespace hbsm {
 				if(A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");
 				C.resize(A.nCols_orig,B.nRows_orig, no_of_resizes);
 			}
+			
+
 						
 			if(A.lowest_level()){
 							
@@ -1792,7 +1802,8 @@ namespace hbsm {
 					C.children[3]->parent = &C;
                 }
 				
-				if(C.squeeze_needed()){
+				
+				if(C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -1894,8 +1905,7 @@ namespace hbsm {
                     C.children[3]->parent = &C;	
                 }
 				
-				
-				if(C.squeeze_needed()){
+				if(C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -1996,7 +2006,7 @@ namespace hbsm {
                     C.children[3]->parent = &C;	
                 }
 				
-				if(C.squeeze_needed()){
+				if(C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -2100,7 +2110,7 @@ namespace hbsm {
                     C.children[3]->parent = &C;	
                 }
 				
-				if(C.squeeze_needed()){
+				if(C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -3324,7 +3334,7 @@ template<class Treal>
 					C.children[3]->parent = &C;
                 }
 			
-				if(C.squeeze_needed()){
+				if(C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -3450,7 +3460,7 @@ template<class Treal>
                     C.children[3]->parent = &C;	
                 }
 
-				if(C.squeeze_needed()){
+				if(C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -3577,7 +3587,7 @@ template<class Treal>
                 }
 				
 
-				if(C.squeeze_needed()){
+				if(C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -3704,7 +3714,7 @@ template<class Treal>
                     C.children[3]->parent = &C;	
                 }
 				
-				if(C.squeeze_needed()){
+				if(C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -3713,7 +3723,7 @@ template<class Treal>
 					C.clear();
 					C.resize(nRows_orig, nCols_orig);
 					C.assign_from_vectors(rows,cols, vals);					
-				}				
+				}			
 				
 				return;
 	
