@@ -1803,7 +1803,7 @@ namespace hbsm {
                 }
 				
 				
-				if(C.expected_depth() < C.get_depth()){
+				if(A.get_level() == 0 && C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -1905,7 +1905,7 @@ namespace hbsm {
                     C.children[3]->parent = &C;	
                 }
 				
-				if(C.expected_depth() < C.get_depth()){
+				if(A.get_level() == 0 && C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -2006,7 +2006,7 @@ namespace hbsm {
                     C.children[3]->parent = &C;	
                 }
 				
-				if(C.expected_depth() < C.get_depth()){
+				if(A.get_level() == 0 && C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -2110,7 +2110,7 @@ namespace hbsm {
                     C.children[3]->parent = &C;	
                 }
 				
-				if(C.expected_depth() < C.get_depth()){
+				if(A.get_level() == 0 && C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -3334,7 +3334,7 @@ template<class Treal>
 					C.children[3]->parent = &C;
                 }
 			
-				if(C.expected_depth() < C.get_depth()){
+				if(A.get_level() == 0 && C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -3460,7 +3460,7 @@ template<class Treal>
                     C.children[3]->parent = &C;	
                 }
 
-				if(C.expected_depth() < C.get_depth()){
+				if(A.get_level() == 0 && C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -3587,7 +3587,7 @@ template<class Treal>
                 }
 				
 
-				if(C.expected_depth() < C.get_depth()){
+				if(A.get_level() == 0 && C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
@@ -3714,7 +3714,7 @@ template<class Treal>
                     C.children[3]->parent = &C;	
                 }
 				
-				if(C.expected_depth() < C.get_depth()){
+				if(A.get_level() == 0 && C.expected_depth() < C.get_depth()){
 					int nRows_orig = C.nRows_orig;
 					int nCols_orig = C.nCols_orig;
 					std::vector<int> rows, cols;					
