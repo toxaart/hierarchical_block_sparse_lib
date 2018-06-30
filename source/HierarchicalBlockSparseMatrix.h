@@ -102,7 +102,7 @@ namespace hbsm {
 													size_t* no_of_resizes = NULL);
 			
 
-			void self_frob_block_trunc(Treal trunc_value);
+			bool self_frob_block_trunc(Treal trunc_value);
 				
 	public:
 			struct Params {
@@ -3728,21 +3728,24 @@ template<class Treal>
 		} 
 		
 	template<class Treal>
-		void HierarchicalBlockSparseMatrix<Treal>::self_frob_block_trunc(Treal trunc_value) {
+		bool HierarchicalBlockSparseMatrix<Treal>::self_frob_block_trunc(Treal trunc_value) {
 			
+			bool at_least_one_removed = false;
 			
 			for(int i = 0; i < 4; ++i){
 				if(children[i] != NULL){
 					if(children[i]->get_frob_squared() < trunc_value*trunc_value ){
-						if(children[i].unique()) children[i].reset(); // kind of delete!
+						if(children[i].unique()){
+							children[i].reset(); // kind of delete!
+							at_least_one_removed = true;
+						}
 						else throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::self_frob_block_trunc(): attempt to delete shared_ptr which is not unique!");
 					}
-					else children[i]->self_frob_block_trunc(trunc_value);
+					else  at_least_one_removed = children[i]->self_frob_block_trunc(trunc_value);
 				}
 			}
 			
-			// if arrived at lowest level, this loop will be done 4 times, but since it wont have aby children, nothing happens
-			return;
+			return at_least_one_removed;
 		}	
 		
 	template<class Treal>
@@ -3752,8 +3755,7 @@ template<class Treal>
 			
 			matrix_truncated.copy(*this);
 			
-			matrix_truncated.self_frob_block_trunc(trunc_value);
-			
+			return matrix_truncated.self_frob_block_trunc(trunc_value);				
 		}
 		
 } /* end namespace hbsm */
