@@ -575,6 +575,7 @@ static int test_operations() {
 		tmp.assign(Bs);
 	}
 	
+	
 	MatrixType AsxBs;
 	MatrixType::spamm(As, false, Bs, false, AsxBs, 0.2, false, &n_multiplications, &n_resizes);
 

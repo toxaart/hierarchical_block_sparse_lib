@@ -328,8 +328,9 @@ namespace hbsm {
 	template<class Treal> 
 		int HierarchicalBlockSparseMatrix<Treal>::get_depth() const  {
 			
-			if(!children_exist())return get_level();
+			if(empty()) return 0;
 			
+			if(!children_exist()) return 0;
 			
 			int depths[4];
 			if(children[0] != NULL) depths[0] = children[0]->get_depth();
@@ -344,7 +345,9 @@ namespace hbsm {
 			if(children[3] != NULL) depths[3] = children[3]->get_depth();
 			else depths[3] = 0;
 			
-		    return  *std::max_element(depths,depths+4);
+			return  1 + *std::max_element(depths,depths+4);
+			
+			
 		}
 		
 	template<class Treal> 
@@ -1318,21 +1321,28 @@ namespace hbsm {
 
 	template<class Treal>
 		void HierarchicalBlockSparseMatrix<Treal>::copy(const HierarchicalBlockSparseMatrix<Treal> &other, size_t* no_of_resizes) {
-
+			
 			if(this == &other) return; // no need to copy itself to itself
 
 			if(other.empty()){
 				this->clear();
 				return;
 			}
+			
+			if(!empty()) clear();
 
 			set_params(other.get_params());
-			resize(other.nRows_orig,other.nCols_orig, no_of_resizes);
+			resize(other.nRows,other.nCols, no_of_resizes);
+			nRows_orig = other.nRows_orig;
+			nCols_orig = other.nCols_orig;
+			
 
 			if(other.lowest_level()){
 				memcpy(&submatrix[0], &(other.submatrix[0]), sizeof(Treal) * other.submatrix.size());
 				return;
 			}
+			
+			frob_norm_squared_internal = other.frob_norm_squared_internal;
 
 			for(int i = 0; i < 4; ++i){
 				if(children[i] != NULL)
@@ -2121,7 +2131,6 @@ namespace hbsm {
 	template<class Treal>
 		void HierarchicalBlockSparseMatrix<Treal>::adjust_sizes(HierarchicalBlockSparseMatrix<Treal> & A, const int nRows_other, const int nCols_other){
 		
-			
 				
 			std::vector<int> rows, cols;
 			std::vector<Treal> vals;
@@ -2143,9 +2152,6 @@ namespace hbsm {
 			}
 			
 			A.assign_from_vectors(rows,cols,vals);
-				
-			
-			
 		}
 		
 	 template<class Treal>
@@ -3069,36 +3075,40 @@ template<class Treal>
 		void HierarchicalBlockSparseMatrix<Treal>::spamm(HierarchicalBlockSparseMatrix<Treal> const & A, bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, bool tB,
                         HierarchicalBlockSparseMatrix<Treal>& C, const Treal tau, bool updated, size_t* no_of_block_multiplies, size_t* no_of_resizes){
 			
-			if(!updated){ // this is to be in line with rules of Chunks and Tasks,
-						  // since once a chunk is registered, its modification is not allowed
-						  
-				HierarchicalBlockSparseMatrix<Treal>  A_alias;
-				A_alias.copy(A);
-				HierarchicalBlockSparseMatrix<Treal>  B_alias;
-				B_alias.copy(B);
-				
-				A_alias.update_internal_info();
-				B_alias.update_internal_info();
-				
-				spamm(A_alias, tA, B_alias, tB, C, tau, true, no_of_block_multiplies, no_of_resizes);
-				return;
-				
-			}				
 							
 			if(A.nRows < B.nRows){ // A is to be adjusted
 			    HierarchicalBlockSparseMatrix<Treal>  A_alias;
 				A_alias.copy(A);
 				adjust_sizes(A_alias,B.nRows,B.nCols);
-				spamm(A_alias, tA, B, tB, C, tau, updated, no_of_block_multiplies, no_of_resizes);				
+				spamm(A_alias, tA, B, tB, C, tau, updated, no_of_block_multiplies, no_of_resizes);					
 				return;
 			}
-			if(A.nRows > B.nRows){ // B is to be adjusted				
+			if(A.nRows > B.nRows){ // B is to be adjusted		
 				HierarchicalBlockSparseMatrix<Treal>  B_alias;
 				B_alias.copy(B);
 				adjust_sizes(B_alias,A.nRows,A.nCols);
 				spamm(A, tA, B_alias, tB, C, tau, updated, no_of_block_multiplies, no_of_resizes);
 				return;
 			}
+			
+			
+			if(!updated){ // this is to be in line with rules of Chunks and Tasks,
+						  // since once a chunk is registered, its modification is not allowed
+				
+			
+				HierarchicalBlockSparseMatrix<Treal>  A_alias;
+				A_alias.copy(A);
+				
+				HierarchicalBlockSparseMatrix<Treal>  B_alias;
+				B_alias.copy(B);
+							
+				A_alias.update_internal_info();
+				B_alias.update_internal_info();
+							
+				spamm(A_alias, tA, B_alias, tB, C, tau, true, no_of_block_multiplies, no_of_resizes);
+				return;
+				
+			}	
 					
 			if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): non-empty matrix to write result!");
 				
@@ -3135,7 +3145,6 @@ template<class Treal>
 								
 				//at this point all submatrices are square and have equal sizes!
 				if(!tA && !tB){
-					
 					int M = C.nRows;
 					int N = C.nCols;
 					int K = A.nCols;
@@ -3192,7 +3201,6 @@ template<class Treal>
 			
 			
 			Treal tau_squared = tau * tau;
-			
 
 			if(!tA && !tB){
 			
@@ -3210,6 +3218,7 @@ template<class Treal>
 						A0xB0 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
 						spamm(*A.children[0], tA, *B.children[0], tB, *A0xB0, tau, true, no_of_block_multiplies, no_of_resizes);
 					}
+					
 					
 				}
 				
@@ -3249,6 +3258,7 @@ template<class Treal>
 						A3xB1 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
 						spamm(*A.children[3], tA, *B.children[1], tB, *A3xB1, tau, true, no_of_block_multiplies, no_of_resizes);
 					}
+					
 				}
 				
 				
@@ -3268,6 +3278,7 @@ template<class Treal>
 						A0xB2 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
 						spamm(*A.children[0], tA, *B.children[2], tB, *A0xB2, tau, true, no_of_block_multiplies, no_of_resizes);
 					}
+					
 				}
 				
 				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A2xB3;
@@ -3277,6 +3288,7 @@ template<class Treal>
 						A2xB3 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
 						spamm(*A.children[2], tA, *B.children[3], tB, *A2xB3, tau, true, no_of_block_multiplies, no_of_resizes);
 					}
+					
 				}
 				
 				if(A0xB2 != NULL && A2xB3 == NULL){C.children[2] = A0xB2; C.children[2]->parent = &C;}
@@ -3295,6 +3307,7 @@ template<class Treal>
 						A1xB2 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
 						spamm(*A.children[1], tA, *B.children[2], tB, *A1xB2, tau, true, no_of_block_multiplies, no_of_resizes);
 					}
+					
 				}
 				
 				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A3xB3;
@@ -3304,6 +3317,7 @@ template<class Treal>
 						A3xB3 = std::make_shared<HierarchicalBlockSparseMatrix<Treal> >();
 						spamm(*A.children[3], tA, *B.children[3], tB, *A3xB3, tau, true, no_of_block_multiplies, no_of_resizes);
 					}
+					
 				}
 				
 				if(A1xB2 != NULL && A3xB3 == NULL){C.children[3] = A1xB2; C.children[3]->parent = &C;}
@@ -3716,11 +3730,10 @@ template<class Treal>
 	template<class Treal>
 		void HierarchicalBlockSparseMatrix<Treal>::self_frob_block_trunc(Treal trunc_value) {
 			
-			update_internal_info();
 			
 			for(int i = 0; i < 4; ++i){
 				if(children[i] != NULL){
-					if(children[i]->get_frob_norm_squared_internal() < trunc_value*trunc_value ){
+					if(children[i]->get_frob_squared() < trunc_value*trunc_value ){
 						if(children[i].unique()) children[i].reset(); // kind of delete!
 						else throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::self_frob_block_trunc(): attempt to delete shared_ptr which is not unique!");
 					}
@@ -3746,3 +3759,4 @@ template<class Treal>
 } /* end namespace hbsm */
 
 #endif
+
