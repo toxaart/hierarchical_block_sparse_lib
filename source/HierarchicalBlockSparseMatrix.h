@@ -3085,6 +3085,22 @@ template<class Treal>
 		void HierarchicalBlockSparseMatrix<Treal>::spamm(HierarchicalBlockSparseMatrix<Treal> const & A, bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, bool tB,
                         HierarchicalBlockSparseMatrix<Treal>& C, const Treal tau, bool updated, size_t* no_of_block_multiplies, size_t* no_of_resizes){
 			
+			if(!updated){ // this is to be in line with rules of Chunks and Tasks,
+						  // since once a chunk is registered, its modification is not allowed
+						  
+				HierarchicalBlockSparseMatrix<Treal>  A_alias;
+				A_alias.copy(A);
+				HierarchicalBlockSparseMatrix<Treal>  B_alias;
+				B_alias.copy(B);
+				
+				A_alias.update_internal_info();
+				B_alias.update_internal_info();
+				
+				spamm(A_alias, tA, B_alias, tB, C, tau, true, no_of_block_multiplies, no_of_resizes);
+				return;
+				
+			}				
+							
 			if(A.nRows < B.nRows){ // A is to be adjusted
 			    HierarchicalBlockSparseMatrix<Treal>  A_alias;
 				A_alias.copy(A);
@@ -3099,8 +3115,7 @@ template<class Treal>
 				spamm(A, tA, B_alias, tB, C, tau, updated, no_of_block_multiplies, no_of_resizes);
 				return;
 			}
-
-				
+					
 			if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): non-empty matrix to write result!");
 				
 			C.set_params(A.get_params());		
@@ -3128,13 +3143,6 @@ template<class Treal>
 				C.resize(A.nCols_orig,B.nRows_orig, no_of_resizes);
 			}
 			
-			if(!updated){
-				HierarchicalBlockSparseMatrix<Treal> & A_noconst = const_cast< HierarchicalBlockSparseMatrix<Treal> &>(A);
-				HierarchicalBlockSparseMatrix<Treal> & B_noconst = const_cast< HierarchicalBlockSparseMatrix<Treal> &>(B);
-				A_noconst.update_internal_info();
-				B_noconst.update_internal_info();
-			}
-	
 						
 			if(A.lowest_level()){
 							
