@@ -463,9 +463,10 @@ static int test_operations() {
 		
 		printf("A depth %d, B depth  %d \n", A_2level.get_depth(), B_3level.get_depth());
 		
+		printf("Worth ? %d \n", MatrixType::worth_to_multiply(A_2level, false, B_3level, false));
+		
 		MatrixType A_2level_times_B_level;
 		MatrixType::multiply(A_2level, false, B_3level, false, A_2level_times_B_level);
-
 	
 		MatrixType A_2level_times_B_level_ref;
 		A_2level_times_B_level_ref.set_params(param);
@@ -500,15 +501,12 @@ static int test_operations() {
 			Bs.assign(BT_3level_times_A_2level_ref);
 		}
 		
-		
+		printf("Worth ? %d \n", MatrixType::worth_to_multiply(B_3level, true, A_2level, false));
 		
 		MatrixType BT_3level_times_A_2level;
 		MatrixType::multiply(B_3level, true, A_2level, false, BT_3level_times_A_2level);
+		verify_that_matrices_are_equal(BT_3level_times_A_2level, BT_3level_times_A_2level_ref);	
 		
-		
-		
-		//verify_that_matrices_are_equal(BT_3level_times_A_2level, BT_3level_times_A_2level_ref);	
-	
 	}
 	
 	
@@ -653,6 +651,7 @@ static int test_operations() {
 		set_row(tmp, 3, 5, 1, 0, 0.1);
 		tmp.assign(As);
 	}
+	As.update_internal_info();
 	
 	MatrixType Bs;
 	Bs.set_params(param);
@@ -665,10 +664,11 @@ static int test_operations() {
 		set_row(tmp, 3, 0, 1, 0.1, 0.1);
 		tmp.assign(Bs);
 	}
-	
-	
+	Bs.update_internal_info();
+
 	MatrixType AsxBs;
-	MatrixType::spamm(As, false, Bs, false, AsxBs, 0.2, false, &n_multiplications, &n_resizes);
+	
+	MatrixType::spamm(As, false, Bs, false, AsxBs, 0.2, true, &n_multiplications, &n_resizes);
 
 	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
 	
@@ -689,16 +689,16 @@ static int test_operations() {
 	verify_that_matrices_are_equal(AsxBs_ref, AsxBs);	  
 	
 	MatrixType AsxBsT;
-	MatrixType::spamm(As, false, Bs, true, AsxBsT, 0.2, false, &n_multiplications, &n_resizes);
+	MatrixType::spamm(As, false, Bs, true, AsxBsT, 0.2, true, &n_multiplications, &n_resizes);
 	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
 	
 	MatrixType AsTxBs;
-	MatrixType::spamm(As, true, Bs, false, AsTxBs, 0.2, false, &n_multiplications, &n_resizes);
+	MatrixType::spamm(As, true, Bs, false, AsTxBs, 0.2, true, &n_multiplications, &n_resizes);
 	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
 	
 	
 	MatrixType AsTxBsT;
-	MatrixType::spamm(As, true, Bs, true, AsTxBsT, 0.2, false, &n_multiplications, &n_resizes);
+	MatrixType::spamm(As, true, Bs, true, AsTxBsT, 0.2, true, &n_multiplications, &n_resizes);
     std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
   
   }
@@ -801,8 +801,28 @@ static int test_operations() {
 	
 		verify_that_matrices_are_equal(AsxBs, Cs);	  
 		
+		printf("AsxBs depth %d, Cs depth %d \n", AsxBs.get_depth(), Cs.get_depth());
+		
 		assert(AsxBs.get_depth() == Cs.get_depth());
 		
+		As.children[2] = std::make_shared<MatrixType >();
+		As.children[2]->set_params(As.get_params());
+		As.children[2]->resize(2,2);
+		As.children[2]->parent = &As;
+		As.children[2]->children[2] = std::make_shared<MatrixType >();
+		As.children[2]->children[2]->parent = As.children[2].get();
+
+
+
+
+		printf("As.children[2] consistent? %d \n", As.children[2]->check_if_matrix_is_consistent() );
+		printf("As.children[2] lowest_level? %d \n", As.children[2]->lowest_level() );
+		printf("As.children[2] level? %d \n", As.children[2]->get_level() );
+		printf("As.children[2]->children[2] level? %d \n", As.children[2]->children[2]->get_level() );
+		
+		printf("As consistent? %d \n", As.check_if_matrix_is_consistent());
+		//printf("Bs consistent? %d \n", B.check_if_matrix_is_consistent());
+		//printf("Cs consistent? %d \n", Cs.check_if_matrix_is_consistent());
 	
   }
   
@@ -852,6 +872,7 @@ static int test_operations() {
 	    verify_that_matrices_are_equal(AsxBs, Cs);	  
 	
 		assert(AsxBs.get_depth() == Cs.get_depth());
+		
 		
   }
   
