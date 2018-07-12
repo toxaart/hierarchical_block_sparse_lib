@@ -2036,7 +2036,7 @@ namespace hbsm {
 		void HierarchicalBlockSparseMatrix<Treal>::multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
                         HierarchicalBlockSparseMatrix<Treal>& C, size_t* no_of_block_multiplies, size_t* no_of_resizes){
 			
-			/*				
+							
 			if(A.nRows < B.nRows){ // A is to be adjusted
 			    HierarchicalBlockSparseMatrix<Treal>  A_alias;
 				A_alias.copy(A);
@@ -2050,9 +2050,10 @@ namespace hbsm {
 				adjust_sizes(B_alias, A.nRows, A.nCols);
 				multiply(A, tA, B_alias, tB, C, no_of_block_multiplies, no_of_resizes);
 				return;
-			}	*/			
+			}			
 			
 			
+			/*
 			if(A.get_depth() < B.get_depth()){
 				
 				if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): non-empty matrix to write result!");
@@ -2134,11 +2135,11 @@ namespace hbsm {
 					C.children[3]->parent = &C;
 				}
 				
-				/*
-				printf("A.get_depth() < B.get_depth(), C computed with sizes %d %d, orig sizes %d %d, depth() %d \n", C.nRows, C.nCols, C.nRows_orig, C.nCols_orig, C.get_depth());
-				for(int i = 0; i < 4; ++i){
-					if(C.children[i] != NULL) printf("C child %d is not null with sizes %d %d, orig sizes %d %d, depth %d \n", i, C.children[i]->nRows,C.children[i]->nCols,C.children[i]->nRows_orig,C.children[i]->nCols_orig,C.children[i]->get_depth());
-				}*/
+				
+				//printf("A.get_depth() < B.get_depth(), C computed with sizes %d %d, orig sizes %d %d, depth() %d \n", C.nRows, C.nCols, C.nRows_orig, C.nCols_orig, C.get_depth());
+				//for(int i = 0; i < 4; ++i){
+				//	if(C.children[i] != NULL) printf("C child %d is not null with sizes %d %d, orig sizes %d %d, depth %d \n", i, C.children[i]->nRows,C.children[i]->nCols,C.children[i]->nRows_orig,C.children[i]->nCols_orig,C.children[i]->get_depth());
+				//}
 				
 				return;
 				
@@ -2225,16 +2226,16 @@ namespace hbsm {
 					C.children[3] = A3xB;
 					C.children[3]->parent = &C;
 				}
-				/*
-				printf("A.get_depth() > B.get_depth(), C computed with sizes %d %d, orig sizes %d %d, depth() %d \n", C.nRows, C.nCols, C.nRows_orig, C.nCols_orig, C.get_depth());
-				for(int i = 0; i < 4; ++i){
-					if(C.children[i] != NULL) printf("C child %d is not null with sizes %d %d, orig sizes %d %d, depth %d \n", i, C.children[i]->nRows,C.children[i]->nCols,C.children[i]->nRows_orig,C.children[i]->nCols_orig,C.children[i]->get_depth());
-				}*/
+				
+				//printf("A.get_depth() > B.get_depth(), C computed with sizes %d %d, orig sizes %d %d, depth() %d \n", C.nRows, C.nCols, C.nRows_orig, C.nCols_orig, C.get_depth());
+				//for(int i = 0; i < 4; ++i){
+				//	if(C.children[i] != NULL) printf("C child %d is not null with sizes %d %d, orig sizes %d %d, depth %d \n", i, C.children[i]->nRows,C.children[i]->nCols,C.children[i]->nRows_orig,C.children[i]->nCols_orig,C.children[i]->get_depth());
+				//}
 				
 				return;
 				
 			}
-
+*/
 			if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): non-empty matrix to write result!");
 							
 			C.set_params(A.get_params());		
