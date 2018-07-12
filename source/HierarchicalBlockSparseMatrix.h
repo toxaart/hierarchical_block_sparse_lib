@@ -2036,7 +2036,7 @@ namespace hbsm {
 		void HierarchicalBlockSparseMatrix<Treal>::multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
                         HierarchicalBlockSparseMatrix<Treal>& C, size_t* no_of_block_multiplies, size_t* no_of_resizes){
 			
-							
+			/*				
 			if(A.nRows < B.nRows){ // A is to be adjusted
 			    HierarchicalBlockSparseMatrix<Treal>  A_alias;
 				A_alias.copy(A);
@@ -2050,10 +2050,10 @@ namespace hbsm {
 				adjust_sizes(B_alias, A.nRows, A.nCols);
 				multiply(A, tA, B_alias, tB, C, no_of_block_multiplies, no_of_resizes);
 				return;
-			}			
+			}	*/		
 			
 			
-			/*
+			
 			if(A.get_depth() < B.get_depth()){
 				
 				if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): non-empty matrix to write result!");
@@ -2235,7 +2235,7 @@ namespace hbsm {
 				return;
 				
 			}
-*/
+
 			if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): non-empty matrix to write result!");
 							
 			C.set_params(A.get_params());		
