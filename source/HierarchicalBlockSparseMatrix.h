@@ -1244,6 +1244,7 @@ namespace hbsm {
 
 			//check if buffer ended, if so, that was an empty matrix
 			if(n_bytes_left_to_read == 0){
+				submatrix.clear(); // Empty matrix has no elements in any case, even if its size is blocksize, i.e. it is leaf
 				return;
 			}
 		
@@ -2238,7 +2239,23 @@ namespace hbsm {
 
 			if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): non-empty matrix to write result!");
 							
-			C.set_params(A.get_params());		
+			C.set_params(A.get_params());	
+
+			if(!worth_to_multiply(A,tA,B,tB)){
+				
+				// case when both matrices are 0 level, but there is no sense in multiplying them, just resize C and return. Make sure the C submatrix is empty!
+				assert(A.get_level() == 0 && B.get_level() == 0);
+				
+				if(!tA && !tB) C.resize(A.nRows_orig,B.nCols_orig, no_of_resizes);
+				if(!tA && tB) C.resize(A.nRows_orig,B.nRows_orig, no_of_resizes);
+				if(tA && !tB) C.resize(A.nCols_orig,B.nCols_orig, no_of_resizes);
+				if(tA && tB) C.resize(A.nCols_orig,B.nRows_orig, no_of_resizes);
+				
+				C.submatrix.clear();
+				
+				return;
+				
+			}
 			
 			if(A.get_level() == 0 && no_of_resizes != NULL) *no_of_resizes = 0;
 			if(A.get_level() == 0 && no_of_block_multiplies != NULL) *no_of_block_multiplies = 0;
@@ -3807,22 +3824,22 @@ template<class Treal>
 				C.set_params(A.get_params());
 				
 				if(!tA && !tB){
-					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
+					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
 					C.resize(B.nRows_orig, B.nCols_orig, no_of_resizes);
 				}
 				
 				if(!tA && tB){
-					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
+					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
 					C.resize(B.nCols_orig, B.nRows_orig, no_of_resizes);
 				}
 				
 				if(tA && !tB){
-					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
+					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
 					C.resize(B.nRows_orig, B.nCols_orig, no_of_resizes);
 				}
 				
 				if(tA && tB){
-					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
+					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
 					C.resize(B.nCols_orig, B.nRows_orig, no_of_resizes);
 				}
 								
@@ -3901,22 +3918,22 @@ template<class Treal>
 				C.set_params(A.get_params());
 				
 				if(!tA && !tB){		
-					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
+					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
 					C.resize(A.nRows_orig,A.nCols_orig, no_of_resizes); //!!!!!!
 				}
 				
 				if(!tA && tB){
-					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
+					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
 					C.resize(A.nRows_orig,A.nCols_orig, no_of_resizes);
 				}
 				
 				if(tA && !tB){		
-					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
+					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
 					C.resize(A.nCols_orig,A.nRows_orig, no_of_resizes);
 				}
 				
 				if(tA && tB){
-					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
+					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
 					C.resize(A.nCols_orig,A.nRows_orig, no_of_resizes);;
 				}
 				
@@ -3990,6 +4007,22 @@ template<class Treal>
 			if(!C.empty()) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): non-empty matrix to write result!");
 				
 			C.set_params(A.get_params());		
+			
+			if(!worth_to_spamm(A,tA,B,tB,tau)){
+				
+				// case when both matrices are 0 level, but there is no sense in multiplying them, just resize C and return. Make sure the C submatrix is empty!
+				assert(A.get_level() == 0 && B.get_level() == 0);
+				
+				if(!tA && !tB) C.resize(A.nRows_orig,B.nCols_orig, no_of_resizes);
+				if(!tA && tB) C.resize(A.nRows_orig,B.nRows_orig, no_of_resizes);
+				if(tA && !tB) C.resize(A.nCols_orig,B.nCols_orig, no_of_resizes);
+				if(tA && tB) C.resize(A.nCols_orig,B.nRows_orig, no_of_resizes);
+				
+				C.submatrix.clear();
+				
+				return;
+				
+			}
 			
 			if(A.get_level() == 0 && no_of_resizes != NULL) *no_of_resizes = 0;
 			if(A.get_level() == 0 && no_of_block_multiplies != NULL) *no_of_block_multiplies = 0;
