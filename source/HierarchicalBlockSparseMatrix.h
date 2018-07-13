@@ -42,7 +42,7 @@ namespace hbsm {
 		class HierarchicalBlockSparseMatrix{
 	public:
 			typedef Treal real;
-	public:
+	private:
 			int nRows; // number of rows on the current level
 			int nCols; // number of cols on the current level
 			int nRows_orig; // before 'virtual size' has been computed
@@ -179,8 +179,8 @@ namespace hbsm {
 			static void multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
 			HierarchicalBlockSparseMatrix<Treal>& C,
 			size_t* no_of_block_multiplies = NULL,
-			size_t* no_of_resizes = NULL);	
-
+			size_t* no_of_resizes = NULL);
+			
 			void rescale(HierarchicalBlockSparseMatrix<Treal> const& other, Treal alpha);
 			
 			static void inv_chol(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & Z);
@@ -1011,8 +1011,7 @@ namespace hbsm {
 			char* p = dataBuffer;
 
 			if(empty()){
-
-				std::cout << "empty case in write_to_buffer, buffer size " << bufferSize << std::endl;
+				
 				int n_bytes_written = 0;
 
 				memcpy(p, &nRows, sizeof(int));
@@ -1057,8 +1056,6 @@ namespace hbsm {
 				p += sizeof(size_t);
 				n_bytes_written += sizeof(size_t);
 
-				std::cout << "n_bytes_written " << n_bytes_written <<std::endl;
-
 				return;
 			}
 
@@ -1099,8 +1096,6 @@ namespace hbsm {
 
 				memcpy(p, &submatrix[0], submatrix.size() * sizeof(Treal));
 				p += submatrix.size() * sizeof(Treal);
-				
-				
 
 				return;
 			}
@@ -1244,7 +1239,6 @@ namespace hbsm {
 
 			//check if buffer ended, if so, that was an empty matrix
 			if(n_bytes_left_to_read == 0){
-				submatrix.clear(); // Empty matrix has no elements in any case, even if its size is blocksize, i.e. it is leaf
 				return;
 			}
 		
@@ -1322,7 +1316,6 @@ namespace hbsm {
 
 				memcpy(&submatrix[0], p, nRows * nCols * sizeof(Treal));
 				p += nRows * nCols * sizeof(Treal);
-
 			}
 			
 		}
@@ -1694,12 +1687,12 @@ namespace hbsm {
 			
 			bool child0_ok = true, child1_ok = true, child2_ok = true, child3_ok = true;
 			
-			if(children[0]!=NULL) child0_ok = children[0]->check_if_matrix_is_consistent();
-			if(children[1]!=NULL) child1_ok = children[1]->check_if_matrix_is_consistent();
-			if(children[2]!=NULL) child2_ok = children[2]->check_if_matrix_is_consistent();
-			if(children[3]!=NULL) child3_ok = children[3]->check_if_matrix_is_consistent();
+			if(children[0]!=NULL) child0_ok = children[0]->check_if_matrix_is_consistent() && children[0]->nRows < nRows;
+			if(children[1]!=NULL) child1_ok = children[1]->check_if_matrix_is_consistent() && children[1]->nRows < nRows;
+			if(children[2]!=NULL) child2_ok = children[2]->check_if_matrix_is_consistent() && children[2]->nRows < nRows;
+			if(children[3]!=NULL) child3_ok = children[3]->check_if_matrix_is_consistent() && children[3]->nRows < nRows;
 			
-			else return child0_ok && child1_ok && child2_ok && child3_ok;
+			return child0_ok && child1_ok && child2_ok && child3_ok;
 			
 		}				
 		
@@ -2241,20 +2234,18 @@ namespace hbsm {
 							
 			C.set_params(A.get_params());	
 
+
 			if(!worth_to_multiply(A,tA,B,tB)){
 				
-				// case when both matrices are 0 level, but there is no sense in multiplying them, just resize C and return. Make sure the C submatrix is empty!
+				// case when both matrices are 0 level, but there is no sense in multiplying them, just resize C and return. 
 				assert(A.get_level() == 0 && B.get_level() == 0);
 				
 				if(!tA && !tB) C.resize(A.nRows_orig,B.nCols_orig, no_of_resizes);
 				if(!tA && tB) C.resize(A.nRows_orig,B.nRows_orig, no_of_resizes);
 				if(tA && !tB) C.resize(A.nCols_orig,B.nCols_orig, no_of_resizes);
 				if(tA && tB) C.resize(A.nCols_orig,B.nRows_orig, no_of_resizes);
-				
-				C.submatrix.clear();
-				
+			
 				return;
-				
 			}
 			
 			if(A.get_level() == 0 && no_of_resizes != NULL) *no_of_resizes = 0;
@@ -2288,9 +2279,6 @@ namespace hbsm {
 					C.nRows_orig = A.nRows_orig;
 					C.nCols_orig = B.nCols_orig;
 				}
-				
-				
-				
 			}		
 							
 			if(!tA && tB){
@@ -2430,8 +2418,6 @@ namespace hbsm {
 				}
 				
 				if(no_of_block_multiplies != NULL) (*no_of_block_multiplies)++;	
-
-				//printf("A.get_depth() > B.get_depth(), C commputed, get_n_rows() = %d, get_n_cols() = %d \n", C.get_n_rows(), C.get_n_cols());
 				
 				return;
 			}
@@ -2531,9 +2517,6 @@ namespace hbsm {
 					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): resulting matrix is not consistent, smth went wrong!");
 				}	
 				if(squeeze_needed) remove_dummy_levels(C, n_dummy_levels);
-				
-				
-				//printf("A.get_depth() = B.get_depth(), C commputed with sizes %d %d, orig sizes %d %d \n", C.nRows, C.nCols, C.nRows_orig, C.nCols_orig);
 				
 				return;
 			}	
