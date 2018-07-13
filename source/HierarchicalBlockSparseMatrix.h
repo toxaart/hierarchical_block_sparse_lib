@@ -1676,12 +1676,9 @@ namespace hbsm {
 		bool HierarchicalBlockSparseMatrix<Treal>::check_if_matrix_is_consistent() const {	
 	
 			if(lowest_level()){
-				
-				//printf("check_if_matrix_is_consistent called at lowest level \n");
 				if(!children_exist() && submatrix.size() > 0) return true;
 				else return false;
 			}			
-			//printf("check_if_matrix_is_consistent called at higher level \n");
 			
 			if(!children_exist()) return false;
 			

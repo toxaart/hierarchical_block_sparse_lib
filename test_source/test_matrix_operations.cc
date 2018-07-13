@@ -415,17 +415,12 @@ static int test_operations() {
 		}
 		printf("B depth %d \n", B.get_depth());
 		
-		//B.print();
-		
 		
 		MatrixType AxB;
 	
 		MatrixType::multiply(A, false, B, false, AxB);
 		
 		AxB.print();
-		
-		printf("AxB size %d %d, size orig %d %d \n", AxB.nRows, AxB.nCols, AxB.nRows_orig, AxB.nCols_orig);
-		printf("\n");
 	
 		param.blocksize = 2 ;	
 	}
@@ -804,25 +799,20 @@ static int test_operations() {
 		printf("AsxBs depth %d, Cs depth %d \n", AsxBs.get_depth(), Cs.get_depth());
 		
 		assert(AsxBs.get_depth() == Cs.get_depth());
-		
-		As.children[2] = std::make_shared<MatrixType >();
-		As.children[2]->set_params(As.get_params());
-		As.children[2]->resize(2,2);
-		As.children[2]->parent = &As;
-		As.children[2]->children[2] = std::make_shared<MatrixType >();
-		As.children[2]->children[2]->parent = As.children[2].get();
-
-
-
-
-		printf("As.children[2] consistent? %d \n", As.children[2]->check_if_matrix_is_consistent() );
-		printf("As.children[2] lowest_level? %d \n", As.children[2]->lowest_level() );
-		printf("As.children[2] level? %d \n", As.children[2]->get_level() );
-		printf("As.children[2]->children[2] level? %d \n", As.children[2]->children[2]->get_level() );
-		
+	
 		printf("As consistent? %d \n", As.check_if_matrix_is_consistent());
-		//printf("Bs consistent? %d \n", B.check_if_matrix_is_consistent());
-		//printf("Cs consistent? %d \n", Cs.check_if_matrix_is_consistent());
+		printf("Bs consistent? %d \n", B.check_if_matrix_is_consistent());
+		printf("Cs consistent? %d \n", Cs.check_if_matrix_is_consistent());		
+		
+		MatrixType X;
+		X.set_params(param);
+		X.resize(4,4);
+		assert(!X.check_if_matrix_is_consistent());
+		
+		MatrixType Y;
+		Y.set_params(param);
+		Y.resize(2,2);
+		assert(Y.check_if_matrix_is_consistent());
 	
   }
   
