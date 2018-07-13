@@ -3990,15 +3990,13 @@ template<class Treal>
 			
 			if(!worth_to_spamm(A,tA,B,tB,tau)){
 				
-				// case when both matrices are 0 level, but there is no sense in multiplying them, just resize C and return. Make sure the C submatrix is empty!
+				// case when both matrices are 0 level, but there is no sense in multiplying them, just resize C and return.
 				assert(A.get_level() == 0 && B.get_level() == 0);
 				
 				if(!tA && !tB) C.resize(A.nRows_orig,B.nCols_orig, no_of_resizes);
 				if(!tA && tB) C.resize(A.nRows_orig,B.nRows_orig, no_of_resizes);
 				if(tA && !tB) C.resize(A.nCols_orig,B.nCols_orig, no_of_resizes);
 				if(tA && tB) C.resize(A.nCols_orig,B.nRows_orig, no_of_resizes);
-				
-				C.submatrix.clear();
 				
 				return;
 				
