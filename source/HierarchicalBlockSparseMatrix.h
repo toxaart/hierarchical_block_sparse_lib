@@ -2051,6 +2051,7 @@ namespace hbsm {
 							
 				C.set_params(A.get_params());
 				
+				
 				if(!tA && !tB){
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
 					C.resize(B.nRows_orig, B.nCols_orig, no_of_resizes);
@@ -2070,7 +2071,9 @@ namespace hbsm {
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
 					C.resize(B.nCols_orig, B.nRows_orig, no_of_resizes);
 				}
-								
+				
+				if(!worth_to_multiply(A,tA,B,tB)) return;
+												
 				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > AxB0;
 				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > AxB1;
 				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > AxB2;
@@ -2164,6 +2167,8 @@ namespace hbsm {
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
 					C.resize(A.nCols_orig,A.nRows_orig, no_of_resizes);;
 				}
+				
+				if(!worth_to_multiply(A,tA,B,tB)) return;
 				
 				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A0xB;
 				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A1xB;
