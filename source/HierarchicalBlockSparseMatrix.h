@@ -1493,9 +1493,9 @@ namespace hbsm {
 			if(A.nRows_orig != B.nRows_orig || A.nCols_orig != B.nCols_orig ){
 
 				printf("A sizes %d %d, orig sizes %d %d \n", A.nRows, A.nCols, A.nRows_orig, A.nCols_orig);
-				printf("A parent sizes %d %d, orig sizes %d %d \n", A.parent->nRows, A.parent->nCols, A.parent->nRows_orig, A.parent->nCols_orig);
+				//printf("A parent sizes %d %d, orig sizes %d %d \n", A.parent->nRows, A.parent->nCols, A.parent->nRows_orig, A.parent->nCols_orig);
 				printf("B sizes %d %d, orig sizes %d %d \n", B.nRows, B.nCols, B.nRows_orig, B.nCols_orig);
-				printf("B parent sizes %d %d, orig sizes %d %d \n", B.parent->nRows, B.parent->nCols, B.parent->nRows_orig, B.parent->nCols_orig);
+				//printf("B parent sizes %d %d, orig sizes %d %d \n", B.parent->nRows, B.parent->nCols, B.parent->nRows_orig, B.parent->nCols_orig);
 				printf("A depth = %d, expected depth = %d \n", A.get_depth(), A.expected_depth());
 				printf("B depth = %d, expected depth = %d \n", B.get_depth(), B.expected_depth());
 				printf("A empty? %d \n", A.empty());
@@ -2051,28 +2051,29 @@ namespace hbsm {
 							
 				C.set_params(A.get_params());
 				
-				
 				if(!tA && !tB){
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
-					C.resize(B.nRows_orig, B.nCols_orig, no_of_resizes);
+					C.resize(A.nRows_orig, B.nCols_orig, no_of_resizes);
 				}
 				
 				if(!tA && tB){
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
-					C.resize(B.nCols_orig, B.nRows_orig, no_of_resizes);
+					C.resize(A.nRows_orig, B.nRows_orig, no_of_resizes);
 				}
 				
 				if(tA && !tB){
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
-					C.resize(B.nRows_orig, B.nCols_orig, no_of_resizes);
+					C.resize(A.nCols_orig, B.nCols_orig, no_of_resizes);
 				}
 				
 				if(tA && tB){
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
-					C.resize(B.nCols_orig, B.nRows_orig, no_of_resizes);
+					C.resize(A.nCols_orig, B.nRows_orig, no_of_resizes);
 				}
 				
-				if(!worth_to_multiply(A,tA,B,tB)) return;
+				if(!worth_to_multiply(A,tA,B,tB)){
+					return;
+				}
 												
 				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > AxB0;
 				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > AxB1;
@@ -2129,12 +2130,6 @@ namespace hbsm {
 					C.children[3]->parent = &C;
 				}
 				
-				
-				//printf("A.get_depth() < B.get_depth(), C computed with sizes %d %d, orig sizes %d %d, depth() %d \n", C.nRows, C.nCols, C.nRows_orig, C.nCols_orig, C.get_depth());
-				//for(int i = 0; i < 4; ++i){
-				//	if(C.children[i] != NULL) printf("C child %d is not null with sizes %d %d, orig sizes %d %d, depth %d \n", i, C.children[i]->nRows,C.children[i]->nCols,C.children[i]->nRows_orig,C.children[i]->nCols_orig,C.children[i]->get_depth());
-				//}
-				
 				return;
 				
 								
@@ -2148,27 +2143,28 @@ namespace hbsm {
 				C.set_params(A.get_params());
 				
 				if(!tA && !tB){		
-					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
-					C.resize(A.nRows_orig,A.nCols_orig, no_of_resizes); //!!!!!!
+					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");									
+					C.resize(A.nRows_orig, B.nCols_orig, no_of_resizes);
 				}
 				
 				if(!tA && tB){
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
-					C.resize(A.nRows_orig,A.nCols_orig, no_of_resizes);
-					
+					C.resize(A.nRows_orig, B.nRows_orig, no_of_resizes);
 				}
 				
 				if(tA && !tB){		
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
-					C.resize(A.nCols_orig,A.nRows_orig, no_of_resizes);
+					C.resize(A.nCols_orig, B.nCols_orig, no_of_resizes);
 				}
 				
 				if(tA && tB){
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): matrices have bad sizes!");				
-					C.resize(A.nCols_orig,A.nRows_orig, no_of_resizes);;
+					C.resize(A.nCols_orig, B.nRows_orig, no_of_resizes);
 				}
 				
-				if(!worth_to_multiply(A,tA,B,tB)) return;
+				if(!worth_to_multiply(A,tA,B,tB)){
+					return;
+				}
 				
 				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A0xB;
 				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A1xB;
@@ -2222,12 +2218,7 @@ namespace hbsm {
 					C.children[3] = A3xB;
 					C.children[3]->parent = &C;
 				}
-				
-				//printf("A.get_depth() > B.get_depth(), C computed with sizes %d %d, orig sizes %d %d, depth() %d \n", C.nRows, C.nCols, C.nRows_orig, C.nCols_orig, C.get_depth());
-				//for(int i = 0; i < 4; ++i){
-				//	if(C.children[i] != NULL) printf("C child %d is not null with sizes %d %d, orig sizes %d %d, depth %d \n", i, C.children[i]->nRows,C.children[i]->nCols,C.children[i]->nRows_orig,C.children[i]->nCols_orig,C.children[i]->get_depth());
-				//}
-				
+
 				return;
 				
 			}
@@ -2426,11 +2417,13 @@ namespace hbsm {
 					
 
 			if(!tA && !tB){
+				
 			
 				// C0 = A0xB0 + A2xB1
 				// C1 = A1xB0 + A3xB1
 				// C2 = A0xB2 + A2xB3
 				// C3 = A1xB2 + A3xB3
+				
 				
 				std::shared_ptr<HierarchicalBlockSparseMatrix<Treal> > A0xB0;
 				if(A.children[0] != NULL && B.children[0] != NULL && worth_to_multiply(*A.children[0], tA, *B.children[0], tB)){
@@ -2514,12 +2507,14 @@ namespace hbsm {
 					C.children[3] = A1xB2;
 					C.children[3]->parent = &C;
                 }
+			
+			
 						
 				if(A.get_level() != 0 && B.get_level() != 0 && !C.check_if_matrix_is_consistent()){
 					throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::multiply(): resulting matrix is not consistent, smth went wrong!");
 				}	
 				if(squeeze_needed) remove_dummy_levels(C, n_dummy_levels);
-				
+								
 				return;
 			}	
 
@@ -3810,22 +3805,22 @@ template<class Treal>
 				
 				if(!tA && !tB){
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
-					C.resize(B.nRows_orig, B.nCols_orig, no_of_resizes);
+					C.resize(A.nRows_orig, B.nCols_orig, no_of_resizes);
 				}
 				
 				if(!tA && tB){
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
-					C.resize(B.nCols_orig, B.nRows_orig, no_of_resizes);
+					C.resize(A.nRows_orig, B.nRows_orig, no_of_resizes);
 				}
 				
 				if(tA && !tB){
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
-					C.resize(B.nRows_orig, B.nCols_orig, no_of_resizes);
+					C.resize(A.nCols_orig, B.nCols_orig, no_of_resizes);
 				}
 				
 				if(tA && tB){
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
-					C.resize(B.nCols_orig, B.nRows_orig, no_of_resizes);
+					C.resize(A.nCols_orig, B.nRows_orig, no_of_resizes);
 				}
 								
 				if(!worth_to_spamm(A,tA,B,tB,tau)) return;				
@@ -3905,23 +3900,23 @@ template<class Treal>
 				C.set_params(A.get_params());
 				
 				if(!tA && !tB){		
-					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
-					C.resize(A.nRows_orig,A.nCols_orig, no_of_resizes); //!!!!!!
+					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");									
+					C.resize(A.nRows_orig, B.nCols_orig, no_of_resizes);
 				}
 				
 				if(!tA && tB){
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nCols_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
-					C.resize(A.nRows_orig,A.nCols_orig, no_of_resizes);
+					C.resize(A.nRows_orig, B.nRows_orig, no_of_resizes);					
 				}
 				
 				if(tA && !tB){		
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nRows_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
-					C.resize(A.nCols_orig,A.nRows_orig, no_of_resizes);
+					C.resize(A.nCols_orig, B.nCols_orig, no_of_resizes);
 				}
 				
 				if(tA && tB){
 					if(A.get_level() == 0 && B.get_level() == 0 && A.nRows_orig != B.nCols_orig) throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::spamm(): matrices have bad sizes!");				
-					C.resize(A.nCols_orig,A.nRows_orig, no_of_resizes);;
+					C.resize(A.nCols_orig, B.nRows_orig, no_of_resizes);
 				}
 				
 				if(!worth_to_spamm(A,tA,B,tB,tau)) return;	
@@ -4701,6 +4696,14 @@ template<class Treal>
 						else throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::self_frob_block_trunc(): attempt to delete shared_ptr which is not unique!");
 					}
 					else  at_least_one_removed = children[i]->self_frob_block_trunc(trunc_value);
+				}
+			}
+			
+			for(int i = 0; i < 4; ++i){
+				if(children[i] != NULL){
+					if(!children[i]->lowest_level() && !children[i]->children_exist()){
+						children[i] = nullptr;
+					}
 				}
 			}
 			
