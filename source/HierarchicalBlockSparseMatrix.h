@@ -4687,17 +4687,18 @@ template<class Treal>
 			bool at_least_one_removed = false;
 			
 			for(int i = 0; i < 4; ++i){
-				if(children[i] != NULL){
-					if(children[i]->get_frob_squared() < trunc_value*trunc_value ){
-						if(children[i].unique()){
-							children[i].reset(); // kind of delete!
-							at_least_one_removed = true;
-						}
-						else throw std::runtime_error("Error in HierarchicalBlockSparseMatrix::self_frob_block_trunc(): attempt to delete shared_ptr which is not unique!");
+				if(children[i] != NULL){ // if child exist					
+					if(children[i]->get_frob_squared() < trunc_value*trunc_value){
+						children[i] = nullptr;
+						at_least_one_removed = at_least_one_removed || true;
 					}
-					else  at_least_one_removed = children[i]->self_frob_block_trunc(trunc_value);
+					else{
+						bool child_cleared = children[i]->self_frob_block_trunc(trunc_value);
+						at_least_one_removed = at_least_one_removed || child_cleared;
+					}
 				}
 			}
+			
 			
 			for(int i = 0; i < 4; ++i){
 				if(children[i] != NULL){
@@ -4708,6 +4709,7 @@ template<class Treal>
 			}
 			
 			return at_least_one_removed;
+			
 		}	
 		
 	template<class Treal>
