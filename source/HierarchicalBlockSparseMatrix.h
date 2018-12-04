@@ -836,12 +836,15 @@ namespace hbsm {
 			
 		    if(lowest_level()){
 				
+                //this seems to be more logical!
+                /*  
 				int nnz = 0;			
 				for(int i = 0; i < submatrix.size(); ++i){
 					if(fabs(submatrix[i]) > 0.0) nnz += 1; 
-				}
-				
-				return nnz;
+				}				
+				return nnz;*/
+                
+                return submatrix.size();
 			}
 			else{
 				
