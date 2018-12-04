@@ -86,9 +86,9 @@ static int test_creation() {
 		if(fabs(M.get_frob_squared() - expected_frob_sq) > 1e-7)
 			throw std::runtime_error("Error: M.get_frob_squared() gave wrong result.");
 		
-		//std::cout << "   M.get_nnz() = " << M.get_nnz() << std::endl;         
+		std::cout << "   M.get_nnz() = " << M.get_nnz() << std::endl;         
 
-        if(M.get_nnz() != nValues*param.blocksize*param.blocksize)
+        if(M.get_nnz() != 32)
             throw std::runtime_error("Error: M.get_nnz() gave wrong result.");
 	}
 

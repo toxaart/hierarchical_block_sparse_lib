@@ -844,7 +844,22 @@ namespace hbsm {
 				}				
 				return nnz;*/
                 
-                return submatrix.size();
+                if(on_bottom_boundary() && !on_right_boundary()){
+                    return (get_n_rows() % blocksize) * nRows;
+                }
+                if(!on_bottom_boundary() && on_right_boundary()){
+                    return (get_n_cols() % blocksize) * nCols;
+                }
+                
+                if(on_bottom_boundary() && on_right_boundary()){
+                     return (get_n_rows() % blocksize) * (get_n_cols() % blocksize);
+                }
+                
+                if(!on_bottom_boundary() && !on_right_boundary()){
+                     return submatrix.size();
+                }
+                
+               
 			}
 			else{
 				
