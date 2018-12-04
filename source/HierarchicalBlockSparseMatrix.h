@@ -837,13 +837,13 @@ namespace hbsm {
 		    if(lowest_level()){
 				
                 //this seems to be more logical!
-                /*  
 				int nnz = 0;			
 				for(int i = 0; i < submatrix.size(); ++i){
 					if(fabs(submatrix[i]) > 0.0) nnz += 1; 
 				}				
-				return nnz;*/
+				return nnz;
                 
+                /* DOES NOT WORK CORRECTLY, USE ABOVE VERSION
                 if(on_bottom_boundary() && !on_right_boundary()){
                     return (get_n_rows() % blocksize) * nRows;
                 }
@@ -857,7 +857,7 @@ namespace hbsm {
                 
                 if(!on_bottom_boundary() && !on_right_boundary()){
                      return submatrix.size();
-                }
+                }*/
                 
                
 			}

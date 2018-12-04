@@ -88,7 +88,7 @@ static int test_creation() {
 		
 		std::cout << "   M.get_nnz() = " << M.get_nnz() << std::endl;         
 
-        if(M.get_nnz() != 32)
+        if(M.get_nnz() != 2)
             throw std::runtime_error("Error: M.get_nnz() gave wrong result.");
 	}
 
