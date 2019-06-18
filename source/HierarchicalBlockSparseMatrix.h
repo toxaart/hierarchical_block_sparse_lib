@@ -184,6 +184,8 @@ namespace hbsm {
 			void rescale(HierarchicalBlockSparseMatrix<Treal> const& other, Treal alpha);
 			
 			static void inv_chol(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & Z);
+			static void inv_chol_trunc(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & Z, 
+			Treal trunc_value){ throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::inv_chol_trunc: function not yet implemented."); }
 			
 			static void symm_multiply(HierarchicalBlockSparseMatrix<Treal> const & A, bool sA,HierarchicalBlockSparseMatrix<Treal> const & B, bool sB,
 						HierarchicalBlockSparseMatrix<Treal> & C);
