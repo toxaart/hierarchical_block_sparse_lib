@@ -286,28 +286,13 @@ namespace hbsm {
 
 			static bool worth_to_spamm(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, const Treal tau);
 
-			static int get_hypothetical_depth(const int M, const int N, const int blocksize){
-				if(M <= blocksize && N <= blocksize) return 0;
+			static std::vector<int> count_skips(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus, const bool & apply_truncation, const bool & apply_spamm);
 
-				int maxdim = ((M > N) ? M : N);
-
-				//how many times block covers maxdim
-				int n_covers = maxdim / blocksize;
-				if(maxdim % blocksize != 0) n_covers += 1;
-
-				// now we need to find P such that 2^(P-1) <= n_covers <= 2^P
-				int P = 1;
-				int two_to_power_P = 2;
-				while(n_covers >  two_to_power_P){
-					two_to_power_P *= 2;
-					P += 1;
-				}
-
-				return P;
-			}
-
-			static std::vector<int> count_skips(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus);
 			static std::vector<int> sum_skips(std::vector<int> const & curr_level_skips, std::vector<std::vector<int> > const & sub_skips);
+
+			Treal get_max_abs_value() const;
+
+			static std::vector<Treal> get_errors_of_approx_multiplication(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus, const bool & apply_truncation, const bool & apply_spamm);
 
 	};
 
@@ -4792,83 +4777,113 @@ template<class Treal>
 		}
 
 	template<class Treal>
-		std::vector<int> HierarchicalBlockSparseMatrix<Treal>::count_skips(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus){
+		std::vector<int> HierarchicalBlockSparseMatrix<Treal>::count_skips(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA,
+			 HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus,
+		   const bool & apply_truncation, const bool & apply_spamm){
 
 	    // look at the current level
 			std::vector<int> curr_level_skips;
 			const int length = taus.size();
 			curr_level_skips.resize(length);
 
-			Treal product_norm = std::sqrt(A.get_frob_norm_squared_internal() * B.get_frob_norm_squared_internal());
+			Treal A_norm = std::sqrt(A.get_frob_norm_squared_internal());
+			Treal B_norm = std::sqrt(B.get_frob_norm_squared_internal());
+			Treal product_of_norms = A_norm * B_norm;
 
 			for(int i = 0; i < length; ++i){
-				if(product_norm < taus[i]) curr_level_skips[i] = 1;
-				else curr_level_skips[i] = 0;
+
+					// depending on values of apply_truncation and apply_spamm decide if this multiplication is to be skipped
+
+					//truncmul
+					if(apply_truncation && !apply_spamm){
+						if(A_norm < taus[i] || B_norm < taus[i]) curr_level_skips[i] = 1;
+						else curr_level_skips[i] = 0;
+						continue;
+					}
+
+					//SpAMM
+					if(!apply_truncation && apply_spamm){
+						if(product_of_norms < taus[i]) curr_level_skips[i] = 1;
+						else curr_level_skips[i] = 0;
+						continue;
+					}
+
+					//hybrid
+					if(apply_truncation && apply_spamm){
+						if(A_norm < taus[i] || B_norm < taus[i] || product_of_norms < taus[i]) curr_level_skips[i] = 1;
+						else curr_level_skips[i] = 0;
+						continue;
+					}
+
+					if(!apply_truncation && !apply_spamm){
+						curr_level_skips[i] = 0;
+					}
+
 			}
 
 			if(A.lowest_level() && B.lowest_level()){
-				return curr_level_skips;
+					return curr_level_skips;
 			}
 
 			if(A.get_depth() < B.get_depth()){
 
-				bool B0 = false, B1 = false, B2 = false, B3 = false;
-				if(B.children[0] != NULL) B0 = true;
-				if(B.children[1] != NULL) B1 = true;
-				if(B.children[2] != NULL) B2 = true;
-				if(B.children[3] != NULL) B3 = true;
+					bool B0 = false, B1 = false, B2 = false, B3 = false;
+					if(B.children[0] != NULL) B0 = true;
+					if(B.children[1] != NULL) B1 = true;
+					if(B.children[2] != NULL) B2 = true;
+					if(B.children[3] != NULL) B3 = true;
 
-				std::vector<int> sub_skips0,sub_skips1,sub_skips2,sub_skips3;
+					std::vector<int> sub_skips0,sub_skips1,sub_skips2,sub_skips3;
 
-				if(B0) sub_skips0 = count_skips(A, tA, *B.children[0],tB, taus);
-				if(tB){
-					if(B2) sub_skips1 = count_skips(A, tA, *B.children[2], tB, taus);
-					if(B1) sub_skips2 = count_skips(A, tA, *B.children[1], tB, taus);
-				}
-				else{
-					if(B1) sub_skips1 = count_skips(A, tA, *B.children[1], tB, taus);
-					if(B2) sub_skips2 = count_skips(A, tA, *B.children[2], tB, taus);
-				}
-				if(B3) sub_skips3 = count_skips(A, tA, *B.children[3], tB, taus);
+					if(B0) sub_skips0 = count_skips(A, tA, *B.children[0],tB, taus, apply_truncation, apply_spamm);
+					if(tB){
+						if(B2) sub_skips1 = count_skips(A, tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
+						if(B1) sub_skips2 = count_skips(A, tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
+					}
+					else{
+						if(B1) sub_skips1 = count_skips(A, tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
+						if(B2) sub_skips2 = count_skips(A, tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
+					}
+					if(B3) sub_skips3 = count_skips(A, tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
 
-				std::vector<std::vector<int> > all_subskips;
-				all_subskips.push_back(std::move(sub_skips0));
-				all_subskips.push_back(std::move(sub_skips1));
-				all_subskips.push_back(std::move(sub_skips2));
-				all_subskips.push_back(std::move(sub_skips3));
+					std::vector<std::vector<int> > all_subskips;
+					all_subskips.push_back(std::move(sub_skips0));
+					all_subskips.push_back(std::move(sub_skips1));
+					all_subskips.push_back(std::move(sub_skips2));
+					all_subskips.push_back(std::move(sub_skips3));
 
-				return sum_skips(curr_level_skips, all_subskips);
+					return sum_skips(curr_level_skips, all_subskips);
 			}
 
 			if(A.get_depth() > B.get_depth()){
 
-				bool A0 = false, A1 = false, A2 = false, A3 = false;
+					bool A0 = false, A1 = false, A2 = false, A3 = false;
 
-				std::vector<int> sub_skips0,sub_skips1,sub_skips2,sub_skips3;
+					std::vector<int> sub_skips0,sub_skips1,sub_skips2,sub_skips3;
 
-				if(A.children[0] != NULL) A0 = true;
-				if(A.children[1] != NULL) A1 = true;
-				if(A.children[2] != NULL) A2 = true;
-				if(A.children[3] != NULL) A3 = true;
+					if(A.children[0] != NULL) A0 = true;
+					if(A.children[1] != NULL) A1 = true;
+					if(A.children[2] != NULL) A2 = true;
+					if(A.children[3] != NULL) A3 = true;
 
-				if(A0) sub_skips0 = count_skips(*A.children[0], tA, B, tB, taus);
-				if(tA){
-					if(A2) sub_skips1 = count_skips(*A.children[2], tA, B, tB, taus);
-					if(A1) sub_skips2 = count_skips(*A.children[1], tA, B, tB, taus);
-				}
-				else{
-					if(A1) sub_skips1 = count_skips(*A.children[1], tA, B, tB, taus);
-					if(A2) sub_skips2 = count_skips(*A.children[2], tA, B, tB, taus);
-				}
-				if(A3) sub_skips3 = count_skips(*A.children[3], tA, B, tB, taus);
+					if(A0) sub_skips0 = count_skips(*A.children[0], tA, B, tB, taus, apply_truncation, apply_spamm);
+					if(tA){
+						if(A2) sub_skips1 = count_skips(*A.children[2], tA, B, tB, taus, apply_truncation, apply_spamm);
+						if(A1) sub_skips2 = count_skips(*A.children[1], tA, B, tB, taus, apply_truncation, apply_spamm);
+					}
+					else{
+						if(A1) sub_skips1 = count_skips(*A.children[1], tA, B, tB, taus, apply_truncation, apply_spamm);
+						if(A2) sub_skips2 = count_skips(*A.children[2], tA, B, tB, taus, apply_truncation, apply_spamm);
+					}
+					if(A3) sub_skips3 = count_skips(*A.children[3], tA, B, tB, taus, apply_truncation, apply_spamm);
 
-				std::vector<std::vector<int> > all_subskips;
-				all_subskips.push_back(std::move(sub_skips0));
-				all_subskips.push_back(std::move(sub_skips1));
-				all_subskips.push_back(std::move(sub_skips2));
-				all_subskips.push_back(std::move(sub_skips3));
+					std::vector<std::vector<int> > all_subskips;
+					all_subskips.push_back(std::move(sub_skips0));
+					all_subskips.push_back(std::move(sub_skips1));
+					all_subskips.push_back(std::move(sub_skips2));
+					all_subskips.push_back(std::move(sub_skips3));
 
-				return sum_skips(curr_level_skips, all_subskips);
+					return sum_skips(curr_level_skips, all_subskips);
 			}
 
 			bool A0 = false, A1 = false, A2 = false, A3 = false, B0 = false, B1 = false, B2 = false, B3 = false;
@@ -4886,58 +4901,47 @@ template<class Treal>
 			std::vector<int> sub_skips0,sub_skips1,sub_skips2,sub_skips3,sub_skips4,sub_skips5,sub_skips6,sub_skips7;
 
 			if(!tA && !tB){
-
-
-
-				if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus);
-				if(A2 && B1) sub_skips1 = count_skips(*A.children[2], tA, *B.children[1], tB, taus);
-				if(A1 && B0) sub_skips2 = count_skips(*A.children[1], tA, *B.children[0], tB, taus);
-				if(A3 && B1) sub_skips3 = count_skips(*A.children[3], tA, *B.children[1], tB, taus);
-				if(A0 && B2) sub_skips4 = count_skips(*A.children[0], tA, *B.children[2], tB, taus);
-				if(A2 && B3) sub_skips5 = count_skips(*A.children[2], tA, *B.children[3], tB, taus);
-				if(A1 && B2) sub_skips6 = count_skips(*A.children[1], tA, *B.children[2], tB, taus);
-				if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus);
-
-
+					if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
+					if(A2 && B1) sub_skips1 = count_skips(*A.children[2], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
+					if(A1 && B0) sub_skips2 = count_skips(*A.children[1], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
+					if(A3 && B1) sub_skips3 = count_skips(*A.children[3], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
+					if(A0 && B2) sub_skips4 = count_skips(*A.children[0], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
+					if(A2 && B3) sub_skips5 = count_skips(*A.children[2], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
+					if(A1 && B2) sub_skips6 = count_skips(*A.children[1], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
+					if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
 			}
 
 			if(!tA && tB){
-
-				if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus);
-				if(A2 && B2) sub_skips1 = count_skips(*A.children[2], tA, *B.children[2], tB, taus);
-				if(A1 && B0) sub_skips2 = count_skips(*A.children[1], tA, *B.children[0], tB, taus);
-				if(A3 && B2) sub_skips3 = count_skips(*A.children[3], tA, *B.children[2], tB, taus);
-				if(A0 && B1) sub_skips4 = count_skips(*A.children[0], tA, *B.children[1], tB, taus);
-				if(A2 && B3) sub_skips5 = count_skips(*A.children[2], tA, *B.children[3], tB, taus);
-				if(A1 && B1) sub_skips6 = count_skips(*A.children[1], tA, *B.children[1], tB, taus);
-				if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus);
-
+					if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
+					if(A2 && B2) sub_skips1 = count_skips(*A.children[2], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
+					if(A1 && B0) sub_skips2 = count_skips(*A.children[1], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
+					if(A3 && B2) sub_skips3 = count_skips(*A.children[3], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
+					if(A0 && B1) sub_skips4 = count_skips(*A.children[0], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
+					if(A2 && B3) sub_skips5 = count_skips(*A.children[2], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
+					if(A1 && B1) sub_skips6 = count_skips(*A.children[1], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
+					if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
 			}
 
 			if(tA && !tB){
-
-				if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus);
-				if(A1 && B1) sub_skips1 = count_skips(*A.children[1], tA, *B.children[1], tB, taus);
-				if(A2 && B0) sub_skips2 = count_skips(*A.children[2], tA, *B.children[0], tB, taus);
-				if(A3 && B1) sub_skips3 = count_skips(*A.children[3], tA, *B.children[1], tB, taus);
-				if(A0 && B2) sub_skips4 = count_skips(*A.children[0], tA, *B.children[2], tB, taus);
-				if(A1 && B3) sub_skips5 = count_skips(*A.children[1], tA, *B.children[3], tB, taus);
-				if(A2 && B2) sub_skips6 = count_skips(*A.children[2], tA, *B.children[2], tB, taus);
-				if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus);
-
+					if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
+					if(A1 && B1) sub_skips1 = count_skips(*A.children[1], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
+					if(A2 && B0) sub_skips2 = count_skips(*A.children[2], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
+					if(A3 && B1) sub_skips3 = count_skips(*A.children[3], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
+					if(A0 && B2) sub_skips4 = count_skips(*A.children[0], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
+					if(A1 && B3) sub_skips5 = count_skips(*A.children[1], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
+					if(A2 && B2) sub_skips6 = count_skips(*A.children[2], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
+					if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
 			}
 
 			if(tA && tB){
-
-				if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus);
-				if(A1 && B2) sub_skips1 = count_skips(*A.children[1], tA, *B.children[2], tB, taus);
-				if(A2 && B0) sub_skips2 = count_skips(*A.children[2], tA, *B.children[0], tB, taus);
-				if(A3 && B2) sub_skips3 = count_skips(*A.children[3], tA, *B.children[2], tB, taus);
-				if(A0 && B1) sub_skips4 = count_skips(*A.children[0], tA, *B.children[1], tB, taus);
-				if(A1 && B3) sub_skips5 = count_skips(*A.children[1], tA, *B.children[3], tB, taus);
-				if(A2 && B1) sub_skips6 = count_skips(*A.children[2], tA, *B.children[1], tB, taus);
-				if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus);
-
+					if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
+					if(A1 && B2) sub_skips1 = count_skips(*A.children[1], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
+					if(A2 && B0) sub_skips2 = count_skips(*A.children[2], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
+					if(A3 && B2) sub_skips3 = count_skips(*A.children[3], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
+					if(A0 && B1) sub_skips4 = count_skips(*A.children[0], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
+					if(A1 && B3) sub_skips5 = count_skips(*A.children[1], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
+					if(A2 && B1) sub_skips6 = count_skips(*A.children[2], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
+					if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
 			}
 
 
@@ -4975,6 +4979,63 @@ template<class Treal>
 				}
 
 				return total_skips;
+		}
+
+	template<class Treal>
+		Treal HierarchicalBlockSparseMatrix<Treal>::get_max_abs_value() const {
+				std::vector<Treal> all_values;
+				std::vector<int> rows, cols;
+
+				get_all_values(rows,cols,all_values);
+
+				Treal max_abs_value = 0.0;
+
+				for(auto i = 0; i < all_values.size(); ++i){
+					if(fabs(all_values[i]) > max_abs_value) max_abs_value = all_values[i];
+				}
+		}
+
+	template<class Treal>
+	  std::vector<Treal> HierarchicalBlockSparseMatrix<Treal>::get_errors_of_approx_multiplication(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus, const bool & apply_truncation, const bool & apply_spamm){
+
+			std::vector<int> skips = count_skips(A, tA, B, tB, taus, apply_truncation, apply_spamm);
+
+			assert(skips.size() == taus.size());
+
+			std::vector<Treal> errors;
+			errors.resize(skips.size());
+
+			Treal c1 = A.get_max_abs_value();
+			Treal c2 = B.get_max_abs_value();
+
+			//truncmul
+			if(apply_truncation && !apply_spamm){
+				for(int i = 0; i < errors.size(); ++i){
+					errors[i] = std::max(c1,c2) * std::sqrt(taus[i] * taus[i] * skips[i]);
+				}
+			}
+
+			//spamm
+			if(!apply_truncation && apply_spamm){
+				for(int i = 0; i < errors.size(); ++i){
+					errors[i] = std::sqrt(taus[i] * taus[i] * skips[i]);
+				}
+			}
+
+			//hybrid
+			if(apply_truncation	&& apply_spamm){
+				for(int i = 0; i < errors.size(); ++i){
+					errors[i] = std::max(1.0,std::max(c1,c2)) * std::sqrt(taus[i] * taus[i] * skips[i]);
+				}
+			}
+
+			//regular multiplication - do nothing
+			if(!apply_truncation && !apply_spamm){
+
+			}
+
+			return errors;
+
 		}
 
 } /* end namespace hbsm */

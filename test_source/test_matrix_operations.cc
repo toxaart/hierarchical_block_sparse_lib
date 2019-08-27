@@ -682,6 +682,9 @@ static int test_operations() {
 
 
 	verify_that_matrices_are_equal(AsxBs_ref, AsxBs);
+
+	bool apply_truncation = false;
+	bool apply_spamm = true;
   std::vector<double> taus;
 	taus.push_back(0.0125);
 	taus.push_back(0.025);
@@ -690,12 +693,35 @@ static int test_operations() {
 	taus.push_back(0.2);
 	taus.push_back(0.4);
 	taus.push_back(0.8);
-	std::vector<int> skips = MatrixType::count_skips(As, false, Bs, false, taus);
+	std::vector<int> skips = MatrixType::count_skips(As, false, Bs, false, taus, apply_truncation, apply_spamm);
 	std::cout << "Skips counter, in total " << skips.size() << " skips." << std::endl;
 	for(int k = 0; k < skips.size(); ++k){
-		std::cout << "skips[" << k << "] = " << skips[k] << " ";
+		std::cout << "S[" << k << "] = " << skips[k] << " ";
 	}
 	std::cout << std::endl;
+
+	std::vector<double> errors = MatrixType::get_errors_of_approx_multiplication(As, false, Bs, false, taus, apply_truncation, apply_spamm);
+	std::cout << "error counter, in total " << errors.size() << " skips." << std::endl;
+	for(int k = 0; k < errors.size(); ++k){
+		std::cout << "E[" << k << "] = " << errors[k] << " ";
+	}
+	std::cout << std::endl;
+
+	for(int k = 0; k < taus.size(); ++k){
+		MatrixType AsxBs_approx, AsxBs_exact, minus_AsxBs_exact, AsxBs_error;
+		MatrixType::spamm(As, false, Bs, false, AsxBs_approx, taus[k], true);
+		MatrixType::spamm(As, false, Bs, false, AsxBs_exact, 0.0, true);
+		minus_AsxBs_exact.rescale(AsxBs_exact, -1.0);
+		MatrixType::add(AsxBs_approx, minus_AsxBs_exact, AsxBs_error);
+		double error_norm_squared = AsxBs_error.get_frob_squared();
+		std::cout << "Error in  multiplication with tau = " << taus[k] << " is " << std::sqrt(error_norm_squared) << std::endl;
+		if(errors[k] > 0) assert(std::sqrt(error_norm_squared) < errors[k]);
+	}
+
+
+
+
+
 
 
 	MatrixType AsxBsT;
