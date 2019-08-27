@@ -306,13 +306,8 @@ namespace hbsm {
 				return P;
 			}
 
-			static std::vector<int> get_skips(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus);
-			static std::vector<int> count_skips_lowest_level(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus);
-			static std::vector<int> count_skips_regular(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus);
-			static std::vector<int> count_skips_higher_level_A_at_lower_level(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus);
-			static std::vector<int> count_skips_higher_level_B_at_lower_level(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus);
-			static std::vector<int> count_skips_higher_level_C_at_lower_level(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus);
-
+			static std::vector<int> count_skips(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus);
+			static std::vector<int> sum_skips(std::vector<int> const & curr_level_skips, std::vector<std::vector<int> > const & sub_skips);
 
 	};
 
@@ -4797,85 +4792,190 @@ template<class Treal>
 		}
 
 	template<class Treal>
-		std::vector<int> get_skips(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus){
+		std::vector<int> HierarchicalBlockSparseMatrix<Treal>::count_skips(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus){
 
-			int AM = A.nRows_orig;
-			int AN = A.nCols_orig;
-			int BM = B.nRows_orig;
-			int BN = B.nCols_orig;
+	    // look at the current level
+			std::vector<int> curr_level_skips;
+			const int length = taus.size();
+			curr_level_skips.resize(length);
 
-			assert(A.blocksize == B.blocksize);
+			Treal product_norm = std::sqrt(A.get_frob_norm_squared_internal() * B.get_frob_norm_squared_internal());
 
-			int CM, CN;
-
-			if (!tA && !tB) {
-				assert(AN == BM);
-				CM = AM; CN = BN;
-			}
-			if (tA && !tB) {
-				assert(AM == BM);
-				CM = AN; CN = BN;
-			}
-			if (!tA && tB) {
-				assert(AN == BN);
-				CM = AM; CN = BM;
-			}
-			if (tA && tB) {
-				assert(AM == BN);
-				CM = AN; CN = BM;
+			for(int i = 0; i < length; ++i){
+				if(product_norm < taus[i]) curr_level_skips[i] = 1;
+				else curr_level_skips[i] = 0;
 			}
 
-			if(A.lowest_level() && B.lowest_level()) return count_skips_lowest_level(A,tA,B,tB,taus);
-
-
-			int A_depth = A.get_depth();
-			int B_depth = B.get_depth();
-			int C_depth = get_hypothetical_depth(CM, CN, A.blocksize);
-
-			if(A_depth == B_depth){
-					if(C_depth < A_depth)	return count_skips_higher_level_C_at_lower_level(A,tA,B,tB,taus);
-					else return count_skips_regular(A,tA,B,tB,taus);
+			if(A.lowest_level() && B.lowest_level()){
+				return curr_level_skips;
 			}
 
-			if(A_depth < B_depth){
-				if(C_depth < B_depth) throw std::runtime_error("Error in get_skips: C_depth < B_depth when A_depth < B_depth.");
-				else return count_skips_higher_level_A_at_lower_level(A,tA,B,tB,taus);
-			}
-			if(B_depth < A_depth){
-				if(C_depth < A_depth) throw std::runtime_error("Error in get_skips: C_depth < A_depth when B_depth < A_depth.");
-				else return count_skips_higher_level_B_at_lower_level(A,tA,B,tB,taus);
+			if(A.get_depth() < B.get_depth()){
+
+				bool B0 = false, B1 = false, B2 = false, B3 = false;
+				if(B.children[0] != NULL) B0 = true;
+				if(B.children[1] != NULL) B1 = true;
+				if(B.children[2] != NULL) B2 = true;
+				if(B.children[3] != NULL) B3 = true;
+
+				std::vector<int> sub_skips0,sub_skips1,sub_skips2,sub_skips3;
+
+				if(B0) sub_skips0 = count_skips(A, tA, *B.children[0],tB, taus);
+				if(tB){
+					if(B2) sub_skips1 = count_skips(A, tA, *B.children[2], tB, taus);
+					if(B1) sub_skips2 = count_skips(A, tA, *B.children[1], tB, taus);
+				}
+				else{
+					if(B1) sub_skips1 = count_skips(A, tA, *B.children[1], tB, taus);
+					if(B2) sub_skips2 = count_skips(A, tA, *B.children[2], tB, taus);
+				}
+				if(B3) sub_skips3 = count_skips(A, tA, *B.children[3], tB, taus);
+
+				std::vector<std::vector<int> > all_subskips;
+				all_subskips.push_back(std::move(sub_skips0));
+				all_subskips.push_back(std::move(sub_skips1));
+				all_subskips.push_back(std::move(sub_skips2));
+				all_subskips.push_back(std::move(sub_skips3));
+
+				return sum_skips(curr_level_skips, all_subskips);
 			}
 
+			if(A.get_depth() > B.get_depth()){
+
+				bool A0 = false, A1 = false, A2 = false, A3 = false;
+
+				std::vector<int> sub_skips0,sub_skips1,sub_skips2,sub_skips3;
+
+				if(A.children[0] != NULL) A0 = true;
+				if(A.children[1] != NULL) A1 = true;
+				if(A.children[2] != NULL) A2 = true;
+				if(A.children[3] != NULL) A3 = true;
+
+				if(A0) sub_skips0 = count_skips(*A.children[0], tA, B, tB, taus);
+				if(tA){
+					if(A2) sub_skips1 = count_skips(*A.children[2], tA, B, tB, taus);
+					if(A1) sub_skips2 = count_skips(*A.children[1], tA, B, tB, taus);
+				}
+				else{
+					if(A1) sub_skips1 = count_skips(*A.children[1], tA, B, tB, taus);
+					if(A2) sub_skips2 = count_skips(*A.children[2], tA, B, tB, taus);
+				}
+				if(A3) sub_skips3 = count_skips(*A.children[3], tA, B, tB, taus);
+
+				std::vector<std::vector<int> > all_subskips;
+				all_subskips.push_back(std::move(sub_skips0));
+				all_subskips.push_back(std::move(sub_skips1));
+				all_subskips.push_back(std::move(sub_skips2));
+				all_subskips.push_back(std::move(sub_skips3));
+
+				return sum_skips(curr_level_skips, all_subskips);
+			}
+
+			bool A0 = false, A1 = false, A2 = false, A3 = false, B0 = false, B1 = false, B2 = false, B3 = false;
+
+			if(A.children[0] != NULL) A0 = true;
+			if(A.children[1] != NULL) A1 = true;
+			if(A.children[2] != NULL) A2 = true;
+			if(A.children[3] != NULL) A3 = true;
+
+			if(B.children[0] != NULL) B0 = true;
+			if(B.children[1] != NULL) B1 = true;
+			if(B.children[2] != NULL) B2 = true;
+			if(B.children[3] != NULL) B3 = true;
+
+			std::vector<int> sub_skips0,sub_skips1,sub_skips2,sub_skips3,sub_skips4,sub_skips5,sub_skips6,sub_skips7;
+
+			if(!tA && !tB){
+
+
+
+				if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus);
+				if(A2 && B1) sub_skips1 = count_skips(*A.children[2], tA, *B.children[1], tB, taus);
+				if(A1 && B0) sub_skips2 = count_skips(*A.children[1], tA, *B.children[0], tB, taus);
+				if(A3 && B1) sub_skips3 = count_skips(*A.children[3], tA, *B.children[1], tB, taus);
+				if(A0 && B2) sub_skips4 = count_skips(*A.children[0], tA, *B.children[2], tB, taus);
+				if(A2 && B3) sub_skips5 = count_skips(*A.children[2], tA, *B.children[3], tB, taus);
+				if(A1 && B2) sub_skips6 = count_skips(*A.children[1], tA, *B.children[2], tB, taus);
+				if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus);
+
+
+			}
+
+			if(!tA && tB){
+
+				if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus);
+				if(A2 && B2) sub_skips1 = count_skips(*A.children[2], tA, *B.children[2], tB, taus);
+				if(A1 && B0) sub_skips2 = count_skips(*A.children[1], tA, *B.children[0], tB, taus);
+				if(A3 && B2) sub_skips3 = count_skips(*A.children[3], tA, *B.children[2], tB, taus);
+				if(A0 && B1) sub_skips4 = count_skips(*A.children[0], tA, *B.children[1], tB, taus);
+				if(A2 && B3) sub_skips5 = count_skips(*A.children[2], tA, *B.children[3], tB, taus);
+				if(A1 && B1) sub_skips6 = count_skips(*A.children[1], tA, *B.children[1], tB, taus);
+				if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus);
+
+			}
+
+			if(tA && !tB){
+
+				if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus);
+				if(A1 && B1) sub_skips1 = count_skips(*A.children[1], tA, *B.children[1], tB, taus);
+				if(A2 && B0) sub_skips2 = count_skips(*A.children[2], tA, *B.children[0], tB, taus);
+				if(A3 && B1) sub_skips3 = count_skips(*A.children[3], tA, *B.children[1], tB, taus);
+				if(A0 && B2) sub_skips4 = count_skips(*A.children[0], tA, *B.children[2], tB, taus);
+				if(A1 && B3) sub_skips5 = count_skips(*A.children[1], tA, *B.children[3], tB, taus);
+				if(A2 && B2) sub_skips6 = count_skips(*A.children[2], tA, *B.children[2], tB, taus);
+				if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus);
+
+			}
+
+			if(tA && tB){
+
+				if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus);
+				if(A1 && B2) sub_skips1 = count_skips(*A.children[1], tA, *B.children[2], tB, taus);
+				if(A2 && B0) sub_skips2 = count_skips(*A.children[2], tA, *B.children[0], tB, taus);
+				if(A3 && B2) sub_skips3 = count_skips(*A.children[3], tA, *B.children[2], tB, taus);
+				if(A0 && B1) sub_skips4 = count_skips(*A.children[0], tA, *B.children[1], tB, taus);
+				if(A1 && B3) sub_skips5 = count_skips(*A.children[1], tA, *B.children[3], tB, taus);
+				if(A2 && B1) sub_skips6 = count_skips(*A.children[2], tA, *B.children[1], tB, taus);
+				if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus);
+
+			}
+
+
+
+			std::vector<std::vector<int> > all_subskips;
+			all_subskips.push_back(std::move(sub_skips0));
+			all_subskips.push_back(std::move(sub_skips1));
+			all_subskips.push_back(std::move(sub_skips2));
+			all_subskips.push_back(std::move(sub_skips3));
+			all_subskips.push_back(std::move(sub_skips4));
+			all_subskips.push_back(std::move(sub_skips5));
+			all_subskips.push_back(std::move(sub_skips6));
+			all_subskips.push_back(std::move(sub_skips7));
+
+			return sum_skips(curr_level_skips, all_subskips);
+
+
+
+	}
+
+ template<class Treal>
+ 		std::vector<int> HierarchicalBlockSparseMatrix<Treal>::sum_skips(std::vector<int> const & curr_level_skips, std::vector<std::vector<int> > const & sub_skips){
+
+			  std::vector<int> total_skips;
+				total_skips.resize(curr_level_skips.size());
+
+				for(int j = 0; j < curr_level_skips.size(); ++j){
+
+					if(curr_level_skips[j] == 1) total_skips[j] = 1;
+					else{
+						for(int i = 0; i < sub_skips.size();++i){
+							total_skips[j] += sub_skips[i][j];
+						}
+					}
+				}
+
+				return total_skips;
 		}
-
-	template<class Treal>
-		std::vector<int> count_skips_lowest_level(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus){
-
-			std::vector<int> result;
-			result.resize(taus.size());
-
-			Treal product_norm_bound = std::sqrt(A.get_frob_norm_squared_internal() * B.get_frob_norm_squared_internal());
-
-			for(int i = 0; i < taus.size(); ++i){
-
-				// HERE A SELECTION CRITERION MUST BE EMPLOYED DEPENDING ON THE METHOD USED!!!1
-				if(product_norm_bound < taus[i]) result[i] = 1;
-
-			}
-
-			return result;
-
-		}
-
-		template<class Treal>
-			std::vector<int> count_skips_regular(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus){
-
-				std::vector<int> result;
-				result.resize(taus.size());
-
-				//FIXME - not finished!
-				return result;
-			}
 
 } /* end namespace hbsm */
 

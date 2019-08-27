@@ -2,9 +2,9 @@
  * Copyright (C) Emanuel H. Rubensson <emanuelrubensson@gmail.com>,
  *               Elias Rudberg <eliasrudberg@gmail.com>, and
  *               Anastasia Kruchinina <anastasia.kruchinina@it.uu.se>.
- * 
+ *
  * Distribution without copyright owners' explicit consent prohibited.
- * 
+ *
  * This source code is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -53,9 +53,9 @@ static void test_symm_multiply(typename MatrixType::Params const & param) {
 	if (verbose)
 	std::cout << "Test symm_multiply 1" << std::endl;
 
-	
 
-	
+
+
 	// A * B
 	MatrixType AxB;
 	MatrixType::symm_multiply(A, true, B, false, AxB);
@@ -74,7 +74,7 @@ static void test_symm_multiply(typename MatrixType::Params const & param) {
 
 
 	verify_that_matrices_are_equal(AxB, AxBref);
-	
+
 
 	if (verbose)
 	std::cout << "Test symm_multiply 2" << std::endl;
@@ -112,7 +112,7 @@ static void test_symm_square(typename MatrixType::Params const & param) {
   // A * A
   MatrixType AxA;
   MatrixType::symm_square(A, AxA);
-  
+
   MatrixType AxAref;
   AxAref.set_params(param);
   AxAref.resize(5, 5);
@@ -125,11 +125,11 @@ static void test_symm_square(typename MatrixType::Params const & param) {
     set_row(tmp, 4,     0,     0,     0,     0,    43);
     tmp.assign(AxAref);
   }
-	
-  verify_that_matrices_are_equal(AxA, AxAref);
-  
 
-  
+  verify_that_matrices_are_equal(AxA, AxAref);
+
+
+
 }
 
 template<typename MatrixType>
@@ -144,8 +144,8 @@ static void test_symm_rk(typename MatrixType::Params const & param) {
     tmp.assign(A);
   }
 
-  
-  
+
+
   if (verbose)
     std::cout << "Test symm_rk C = A * A'" << std::endl;
   // A * A'
@@ -155,7 +155,7 @@ static void test_symm_rk(typename MatrixType::Params const & param) {
   AxAtref.set_params(param);
   AxAtref.resize(2, 2);
   {
-    SparseMatrix tmp;    
+    SparseMatrix tmp;
     set_row(tmp, 0,    38,    13);
     set_row(tmp, 1,     0,     5);
     tmp.assign(AxAtref);
@@ -180,7 +180,7 @@ static void test_symm_rk(typename MatrixType::Params const & param) {
   }
 
   verify_that_matrices_are_equal(AtxA, AtxAref);
-  
+
 }
 
 template<typename MatrixType>
@@ -201,22 +201,22 @@ static void test_invchol() {
       set_row(tmp, 2, 1, 2, 5, 3, 0 );
       set_row(tmp, 3, 0, 0, 3, 8, 0 );
       set_row(tmp, 4, 0, 0, 0, 0, 7 );
-      tmp.assign(A);    
-    }    
+      tmp.assign(A);
+    }
 
-	
+
     MatrixType::inv_chol(A, Z);
     MatrixType Z_ref;
     Z_ref.set_params(param);
     Z_ref.resize(5,5);
     {
-      SparseMatrix tmp;     
+      SparseMatrix tmp;
       set_row(tmp, 0, 0.447213595499958,                  0, -0.098373875367593,  0.060157954894827,                  0 );
       set_row(tmp, 1, 0,                  0.408248290463863, -0.163956458945988,  0.100263258158045,                  0 );
       set_row(tmp, 2, 0,                                  0,  0.491869376837965, -0.300789774474136,                  0 );
       set_row(tmp, 3, 0,                                  0,                  0,  0.414421467053253,                  0 );
       set_row(tmp, 4, 0,                                  0,                  0,                  0,  0.377964473009227 );
-      tmp.assign(Z_ref);    
+      tmp.assign(Z_ref);
     }
     verify_that_matrices_are_almost_equal(Z, Z_ref, 1e-10);
 }
@@ -224,39 +224,39 @@ static void test_invchol() {
 template<typename MatrixType>
 static int test_operations() {
   typename MatrixType::Params param;
-#if 1  
+#if 1
 	param.blocksize = 2; // Only for block sparse matrix
 #endif
-  
+
   // Test add()
 	size_t n_resizes = 0;
 	size_t n_multiplications;
 
 	MatrixType A;
 	A.set_params(param);
-	A.resize(2, 3, &n_resizes);	
+	A.resize(2, 3, &n_resizes);
 	{
 		SparseMatrix tmp;
 		set_row(tmp, 0, 2, 3, 5);
 		set_row(tmp, 1, 0, 1, 2);
 		tmp.assign(A);
 	}
-	
+
 	MatrixType AT;
 	MatrixType::transpose(A,AT);
-		
+
 	MatrixType AT_ref;
 	AT_ref.set_params(param);
-	AT_ref.resize(3, 2);	
+	AT_ref.resize(3, 2);
 	{
 		SparseMatrix tmp;
 		set_row(tmp, 0, 2, 0);
 		set_row(tmp, 1, 3, 1);
 		set_row(tmp, 2, 5, 2);
 		tmp.assign(AT_ref);
-	}	
-	
-	verify_that_matrices_are_equal(AT, AT_ref);  
+	}
+
+	verify_that_matrices_are_equal(AT, AT_ref);
 
 	MatrixType B;
 	B.set_params(param);
@@ -281,10 +281,10 @@ static int test_operations() {
 		set_row(tmp, 1, 6, 3, 6);
 		tmp.assign(Cref);
 	}
-	verify_that_matrices_are_equal(C, Cref);  
+	verify_that_matrices_are_equal(C, Cref);
 
 	// Test multiply()
-	
+
 	MatrixType D;
 	D.set_params(param);
 	D.resize(3, 2);
@@ -295,7 +295,7 @@ static int test_operations() {
 		set_row(tmp, 2, 3, 5);
 		tmp.assign(D);
 	}
-  
+
 	MatrixType AxD;
 	MatrixType::multiply(A, false, D, false, AxD, &n_multiplications, &n_resizes);
 
@@ -308,9 +308,9 @@ static int test_operations() {
 		set_row(tmp, 1, 13, 13);
 		tmp.assign(AxDref);
 	}
-	
+
     verify_that_matrices_are_equal(AxD, AxDref);
-  
+
 	MatrixType DxA;
 	MatrixType::multiply(D, false, A, false, DxA);
 
@@ -327,7 +327,7 @@ static int test_operations() {
 
 
 	verify_that_matrices_are_equal(DxA, DxAref);
-  
+
 
 	if (verbose)
 		std::cout << "Test multiply NT" << std::endl;
@@ -343,12 +343,12 @@ static int test_operations() {
 		set_row(tmp, 1, 13,  5);
 		tmp.assign(AxAt_ref);
 	}
-	
+
 	verify_that_matrices_are_equal(AxAt, AxAt_ref);
-  
+
 	if (verbose)
 		std::cout << "Test multiply TN" << std::endl;
-		
+
 	MatrixType AtxA;
 	MatrixType::multiply(A, true, A, false, AtxA);
 
@@ -363,7 +363,7 @@ static int test_operations() {
 		tmp.assign(AtxA_ref);
 	}
 	verify_that_matrices_are_equal(AtxA, AtxA_ref);
-	
+
 	if (verbose)
 		std::cout << "Test multiply TT" << std::endl;
 	MatrixType AtxDt;
@@ -377,58 +377,58 @@ static int test_operations() {
 		set_row(tmp, 0,  4, 14,  6);
 		set_row(tmp, 1,  7, 24, 14);
 		set_row(tmp, 2, 12, 41, 25);
-		tmp.assign(AtxDt_ref);    
+		tmp.assign(AtxDt_ref);
 	}
-	
+
 	verify_that_matrices_are_equal(AtxDt, AtxDt_ref);
-	
+
 
 
 	// test matrices of different numbers levels
 	{
-		param.blocksize = 1 ;	
-		
+		param.blocksize = 1 ;
+
 		MatrixType A;
 		A.set_params(param);
-		
+
 		A.resize(1,1);
-		
+
 		std::vector<int> rowsA, colsA;
 		std::vector<double> valsA;
-		
+
 		rowsA.push_back(0);
 		colsA.push_back(0);
 		valsA.push_back(2);
-		
+
 		A.assign_from_vectors(rowsA,colsA,valsA);
 		printf("A depth %d \n", A.get_depth());
-		
+
 		//A.print();
-		
+
 		MatrixType B;
 		B.set_params(param);
 		B.resize(1,2);
 		{
 			SparseMatrix tmp;
 			set_row(tmp, 0,  1, 2);
-			tmp.assign(B);    
+			tmp.assign(B);
 		}
 		printf("B depth %d \n", B.get_depth());
-		
-		
+
+
 		MatrixType AxB;
-	
+
 		MatrixType::multiply(A, false, B, false, AxB);
-		
+
 		AxB.print();
-	
-		param.blocksize = 2 ;	
+
+		param.blocksize = 2 ;
 	}
-	
-	
+
+
 	// test matrices of different numbers levels
 	{
-		
+
 		typename MatrixType::Params param2;
 		param2.blocksize = 3;
 		MatrixType A_2level; // A will have 2 levels
@@ -455,14 +455,14 @@ static int test_operations() {
 			set_row(Bs, 4, 5, 1, 1, 2, 1, 2, 3);
 			Bs.assign(B_3level);
 		}
-		
+
 		printf("A depth %d, B depth  %d \n", A_2level.get_depth(), B_3level.get_depth());
-		
+
 		printf("Worth ? %d \n", MatrixType::worth_to_multiply(A_2level, false, B_3level, false));
-		
+
 		MatrixType A_2level_times_B_level;
 		MatrixType::multiply(A_2level, false, B_3level, false, A_2level_times_B_level);
-	
+
 		MatrixType A_2level_times_B_level_ref;
 		A_2level_times_B_level_ref.set_params(param);
 		A_2level_times_B_level_ref.resize(5, 7);
@@ -475,11 +475,11 @@ static int test_operations() {
 			set_row(tmp, 4,    32,    34,    39,    43,    11,    45,    30);
 			tmp.assign(A_2level_times_B_level_ref);
 		}
-		
-		verify_that_matrices_are_equal(A_2level_times_B_level_ref, A_2level_times_B_level);	
+
+		verify_that_matrices_are_equal(A_2level_times_B_level_ref, A_2level_times_B_level);
 		assert(A_2level_times_B_level_ref.get_depth() == A_2level_times_B_level.get_depth());
 
-		
+
 		MatrixType BT_3level_times_A_2level_ref; // B will have 3 levels
 		BT_3level_times_A_2level_ref.set_params(param2);
 		BT_3level_times_A_2level_ref.resize(7, 5);
@@ -495,22 +495,22 @@ static int test_operations() {
 
 			Bs.assign(BT_3level_times_A_2level_ref);
 		}
-		
+
 		printf("Worth ? %d \n", MatrixType::worth_to_multiply(B_3level, true, A_2level, false));
-		
+
 		MatrixType BT_3level_times_A_2level;
 		MatrixType::multiply(B_3level, true, A_2level, false, BT_3level_times_A_2level);
-		verify_that_matrices_are_equal(BT_3level_times_A_2level, BT_3level_times_A_2level_ref);	
-		
+		verify_that_matrices_are_equal(BT_3level_times_A_2level, BT_3level_times_A_2level_ref);
+
 	}
-	
-	
-	
+
+
+
 	// test rescale
-	
+
 	MatrixType minus_A;
 	minus_A.rescale(A, -1.0);
-	
+
 	MatrixType minus_A_ref;
 	minus_A_ref.set_params(param);
 	minus_A_ref.resize(2, 3);
@@ -520,9 +520,9 @@ static int test_operations() {
 		set_row(tmp, 1, -0, -1, -2);
 		tmp.assign(minus_A_ref);
 	}
-	
+
 	verify_that_matrices_are_equal(minus_A, minus_A_ref);
-	
+
 
 
   if (verbose)
@@ -539,34 +539,34 @@ static int test_operations() {
       set_row(tmp, 1, 0.1, 5.8 , 0.25, 0.55);
       set_row(tmp, 2, 0.4, 0.25, 6.7 , 0.6 );
       set_row(tmp, 3, 0.7, 0.55, 0.6 , 5.5 );
-      tmp.assign(A);    
-    }    
+      tmp.assign(A);
+    }
     MatrixType::inv_chol(A, Z);
     MatrixType Z_ref;
     Z_ref.set_params(param);
     Z_ref.resize(4,4);
     {
-      SparseMatrix tmp;     
+      SparseMatrix tmp;
       set_row(tmp, 0, 0.438529009653515, -0.007986466419713, -0.029497652767486, -0.055022297341530);
       set_row(tmp, 1, 0,                  0.415296253825059, -0.016194789754698, -0.038713453134371);
       set_row(tmp, 2, 0,                  0,                  0.387518183415998, -0.034114893784155);
       set_row(tmp, 3, 0,                  0,                  0,                  0.433761784290076);
-      tmp.assign(Z_ref);    
+      tmp.assign(Z_ref);
     }
 
 
-	
+
     verify_that_matrices_are_almost_equal(Z, Z_ref, 1e-10);
   }
 
-  test_symm_multiply<MatrixType>(param);  
-  
+  test_symm_multiply<MatrixType>(param);
+
   test_symm_square<MatrixType>(param);
-  
+
   test_symm_rk<MatrixType>(param);
 
   test_invchol<MatrixType>();
-  
+
   if (verbose)
     std::cout << "Test get_trace" << std::endl;
   // Test get_trace()
@@ -580,7 +580,7 @@ static int test_operations() {
       set_row(tmp, 1, 0, 1, 2);
       set_row(tmp, 2, 5, 8, 9);
       tmp.assign(A);
-    }    
+    }
     if(A.get_trace() != 12.0)
       throw std::runtime_error("Error: get_trace() gave wrong value.");
   }
@@ -593,7 +593,7 @@ static int test_operations() {
     MatrixType A;
     A.set_params(param);
     MatrixType::set_to_identity(A, 17);
-	
+
     if(A.get_trace() != 17.0)
       throw std::runtime_error("Error: set_to_identity() gave wrong result.");
   }
@@ -601,7 +601,7 @@ static int test_operations() {
 
   if (verbose)
     std::cout << "Test get_nnz_diag_lowest_level" << std::endl;
-  // Test get_nnz_diag_lowest_level()                                       
+  // Test get_nnz_diag_lowest_level()
   {
     MatrixType A;
     A.set_params(param);
@@ -613,7 +613,7 @@ static int test_operations() {
       set_row(tmp, 2, 0, 0, 5);
       tmp.assign(A);
     }
-    
+
     if(A.get_nnz_diag_lowest_level() != 8)
       throw std::runtime_error("Error: get_nnz_diag_lowest_level() gave wrong value.");
   }
@@ -624,20 +624,20 @@ static int test_operations() {
   X.set_params(param);
   X.resize(6,6);
   X.random_blocks(3);
-  
+
   //X.print();
-  
+
   if(X.get_nnz() != 27) throw std::runtime_error("Error: random_blocks() gave wrong value.");
-  
-  
-  
+
+
+
   {//Test SpAMM
-	
-	param.blocksize = 2 ;	
-	
+
+	param.blocksize = 2 ;
+
 	MatrixType As;
 	As.set_params(param);
-	As.resize(4, 4, &n_resizes);	
+	As.resize(4, 4, &n_resizes);
 	{
 		SparseMatrix tmp;
 		set_row(tmp, 0, 1, 2, 0.1, 0.1);
@@ -647,10 +647,10 @@ static int test_operations() {
 		tmp.assign(As);
 	}
 	As.update_internal_info();
-	
+
 	MatrixType Bs;
 	Bs.set_params(param);
-	Bs.resize(4, 4, &n_resizes);	
+	Bs.resize(4, 4, &n_resizes);
 	{
 		SparseMatrix tmp;
 		set_row(tmp, 0, 1, 6, 5, 0);
@@ -662,14 +662,14 @@ static int test_operations() {
 	Bs.update_internal_info();
 
 	MatrixType AsxBs;
-	
+
 	MatrixType::spamm(As, false, Bs, false, AsxBs, 0.2, true, &n_multiplications, &n_resizes);
 
 	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
-	
+
 	MatrixType AsxBs_ref;
 	AsxBs_ref.set_params(param);
-	AsxBs_ref.resize(4, 4, &n_resizes);	
+	AsxBs_ref.resize(4, 4, &n_resizes);
 	{
 		SparseMatrix tmp;
 		set_row(tmp, 0, 1.2, 8.2, 9, 2);
@@ -677,34 +677,49 @@ static int test_operations() {
 		set_row(tmp, 2, 3, 19, 17, 1);
 		set_row(tmp, 3, 5, 31.1, 27, 1);
 		tmp.assign(AsxBs_ref);
-	}  
-	
-	
-	  
-	verify_that_matrices_are_equal(AsxBs_ref, AsxBs);	  
-	
+	}
+
+
+
+	verify_that_matrices_are_equal(AsxBs_ref, AsxBs);
+  std::vector<double> taus;
+	taus.push_back(0.0125);
+	taus.push_back(0.025);
+	taus.push_back(0.05);
+	taus.push_back(0.1);
+	taus.push_back(0.2);
+	taus.push_back(0.4);
+	taus.push_back(0.8);
+	std::vector<int> skips = MatrixType::count_skips(As, false, Bs, false, taus);
+	std::cout << "Skips counter, in total " << skips.size() << " skips." << std::endl;
+	for(int k = 0; k < skips.size(); ++k){
+		std::cout << "skips[" << k << "] = " << skips[k] << " ";
+	}
+	std::cout << std::endl;
+
+
 	MatrixType AsxBsT;
 	MatrixType::spamm(As, false, Bs, true, AsxBsT, 0.2, true, &n_multiplications, &n_resizes);
 	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
-	
+
 	MatrixType AsTxBs;
 	MatrixType::spamm(As, true, Bs, false, AsTxBs, 0.2, true, &n_multiplications, &n_resizes);
 	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
-	
-	
+
+
 	MatrixType AsTxBsT;
 	MatrixType::spamm(As, true, Bs, true, AsTxBsT, 0.2, true, &n_multiplications, &n_resizes);
     std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
-  
+
   }
-  
+
   {
 	   // test frob_block_trunc
-	  
-	  	param.blocksize = 2;	
+
+	  	param.blocksize = 2;
 		MatrixType As;
 		As.set_params(param);
-		As.resize(4, 4, &n_resizes);	
+		As.resize(4, 4, &n_resizes);
 		{
 			SparseMatrix tmp;
 			set_row(tmp, 0, 1, 2, 0.1, 0.1);
@@ -713,13 +728,13 @@ static int test_operations() {
 			set_row(tmp, 3, 5, 1, 0, 0.1);
 			tmp.assign(As);
 		}
-		
+
 		MatrixType Bs;
 		As.frob_block_trunc(Bs, 0.21);
-		
+
 		MatrixType Bs_ref;
 		Bs_ref.set_params(param);
-		Bs_ref.resize(4, 4, &n_resizes);	
+		Bs_ref.resize(4, 4, &n_resizes);
 		{
 			SparseMatrix tmp;
 			set_row(tmp, 0, 1, 2);
@@ -728,31 +743,31 @@ static int test_operations() {
 			set_row(tmp, 3, 5, 1);
 			tmp.assign(Bs_ref);
 		}
-	  
-	  verify_that_matrices_are_equal(Bs_ref, Bs);	  
+
+	  verify_that_matrices_are_equal(Bs_ref, Bs);
   }
-  
-  
-  
+
+
+
   {
-	  
-		param.blocksize = 2;	
+
+		param.blocksize = 2;
 		MatrixType As;
 		As.set_params(param);
-		As.resize(1, 4);	
-		
+		As.resize(1, 4);
+
 		MatrixType Bs;
 		Bs.set_params(param);
-		Bs.resize(4, 1);	
-		
+		Bs.resize(4, 1);
+
 		MatrixType Cs;
 		Cs.set_params(param);
-		Cs.resize(1, 1);	
+		Cs.resize(1, 1);
 
 		std::vector<int> rows1, cols1, rows2, cols2, rows3, cols3;
 		std::vector<double> vals1, vals2, vals3;
-		
-		
+
+
 		rows1.push_back(0);
 		cols1.push_back(0);
 		vals1.push_back(1);
@@ -765,9 +780,9 @@ static int test_operations() {
 		rows1.push_back(0);
 		cols1.push_back(3);
 		vals1.push_back(4);
-		
+
 		As.assign_from_vectors(rows1,cols1,vals1);
-	
+
 		rows2.push_back(0);
 		cols2.push_back(0);
 		vals2.push_back(5);
@@ -780,59 +795,59 @@ static int test_operations() {
 		rows2.push_back(3);
 		cols2.push_back(0);
 		vals2.push_back(8);
-		
+
 	    Bs.assign_from_vectors(rows2,cols2,vals2);
-		
+
 		MatrixType AsxBs;
-		
+
 		MatrixType::multiply(As, false, Bs, false, AsxBs);
-		
-	  
+
+
 		rows3.push_back(0);
 		cols3.push_back(0);
 		vals3.push_back(70);
-		
+
 		Cs.assign_from_vectors(rows3, cols3,vals3);
-	
-		verify_that_matrices_are_equal(AsxBs, Cs);	  
-		
+
+		verify_that_matrices_are_equal(AsxBs, Cs);
+
 		printf("AsxBs depth %d, Cs depth %d \n", AsxBs.get_depth(), Cs.get_depth());
-		
+
 		assert(AsxBs.get_depth() == Cs.get_depth());
-	
+
 		printf("As consistent? %d \n", As.check_if_matrix_is_consistent());
 		printf("Bs consistent? %d \n", B.check_if_matrix_is_consistent());
-		printf("Cs consistent? %d \n", Cs.check_if_matrix_is_consistent());		
-		
+		printf("Cs consistent? %d \n", Cs.check_if_matrix_is_consistent());
+
 		MatrixType X;
 		X.set_params(param);
 		X.resize(4,4);
 		assert(!X.check_if_matrix_is_consistent());
-		
+
 		MatrixType Y;
 		Y.set_params(param);
 		Y.resize(2,2);
 		assert(Y.check_if_matrix_is_consistent());
-	
+
   }
-  
-  
+
+
   {
-	  
-		param.blocksize = 1;	
+
+		param.blocksize = 1;
 		MatrixType As;
 		As.set_params(param);
-		As.resize(2, 6);	
+		As.resize(2, 6);
 		{
 			SparseMatrix tmp;
 			set_row(tmp, 0, 1, 2, 3, 4, 5, 6);
 			set_row(tmp, 1, 7, 8, 9, 10, 11, 12);
 			tmp.assign(As);
 		}
-		
+
 		MatrixType Bs;
 		Bs.set_params(param);
-		Bs.resize(6, 2);	
+		Bs.resize(6, 2);
 		{
 			SparseMatrix tmp;
 			set_row(tmp, 0, 0, 0);
@@ -842,8 +857,8 @@ static int test_operations() {
 			set_row(tmp, 4, 1, 1);
 			set_row(tmp, 5, 1, 1);
 			tmp.assign(Bs);
-		}		
-		
+		}
+
 		MatrixType Cs;
 		Cs.set_params(param);
 		Cs.resize(2, 2);
@@ -852,25 +867,25 @@ static int test_operations() {
 			set_row(tmp, 0, 11, 11);
 			set_row(tmp, 1, 23, 23);
 			tmp.assign(Cs);
-		}	
-		
-		
+		}
+
+
 		MatrixType AsxBs;
-		
+
 		MatrixType::multiply(As, false, Bs, false, AsxBs);
-	
-	    verify_that_matrices_are_equal(AsxBs, Cs);	  
-	
+
+	    verify_that_matrices_are_equal(AsxBs, Cs);
+
 		assert(AsxBs.get_depth() == Cs.get_depth());
-		
-		
+
+
   }
-  
+
 /*
 
   if (verbose)
     std::cout << "Test get_row_sums" << std::endl;
-  // Test get_col_sums()                                       
+  // Test get_col_sums()
   {
     MatrixType A;
     A.set_params(param);
@@ -896,7 +911,7 @@ static int test_operations() {
 /*
   if (verbose)
     std::cout << "Test spectral_norm" << std::endl;
-  // Test spectral_norm() non-symm                                      
+  // Test spectral_norm() non-symm
   {
     MatrixType A;
     A.set_params(param);
@@ -913,7 +928,7 @@ static int test_operations() {
     if(fabs(norm - 14.16525336) >= 1e-8)
       throw std::runtime_error("Error: spectral_norm(0) gave wrong value.");
   }
-  // Test spectral_norm() symm  
+  // Test spectral_norm() symm
   {
     MatrixType A;
     A.set_params(param);
@@ -931,7 +946,7 @@ static int test_operations() {
       throw std::runtime_error("Error: spectral_norm(1) gave wrong value.");
   }*/
 
-  // // Test get_nnz_in_submatrix() non-symm  
+  // // Test get_nnz_in_submatrix() non-symm
   // {
   //   MatrixType A;
   //   A.set_params(param);
@@ -955,18 +970,18 @@ static int test_operations() {
   //   int M2 = 3;
   //   int N1 = 2;
   //   int N2 = 3;
-  //   A.get_nnz_in_submatrix(rows, cols,vals, 
+  //   A.get_nnz_in_submatrix(rows, cols,vals,
   // 			   M1, M2, N1, N2);
 
   //   for(int j = 0; j < vals.size(); j++)
   //     std::cout << vals[j] << " ";
   //   std::cout << std::endl;
-       
+
 
   // }
 
 
-  // // Test get_diag_part()  
+  // // Test get_diag_part()
   // {
   //   MatrixType A;
   //   A.set_params(param);
@@ -996,14 +1011,14 @@ static int test_operations() {
 
 
 
-  std::cout << 
+  std::cout <<
     "Matrix library matrix operations test finished OK." << std::endl;
-  
+
   return 0;
 }
 
 int main() {
 
   return test_operations<hbsm::HierarchicalBlockSparseMatrix<double> >();
-  
+
 }
