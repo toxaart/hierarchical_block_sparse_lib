@@ -4833,7 +4833,7 @@ template<class Treal>
 					if(B.children[2] != NULL) B2 = true;
 					if(B.children[3] != NULL) B3 = true;
 
-					std::vector<int> sub_skips0,sub_skips1,sub_skips2,sub_skips3;
+					std::vector<int> sub_skips0(length),sub_skips1(length),sub_skips2(length),sub_skips3(length);
 
 					if(B0) sub_skips0 = count_skips(A, tA, *B.children[0],tB, taus, apply_truncation, apply_spamm);
 					if(tB){
@@ -4859,7 +4859,7 @@ template<class Treal>
 
 					bool A0 = false, A1 = false, A2 = false, A3 = false;
 
-					std::vector<int> sub_skips0,sub_skips1,sub_skips2,sub_skips3;
+					std::vector<int> sub_skips0(length),sub_skips1(length),sub_skips2(length),sub_skips3(length);
 
 					if(A.children[0] != NULL) A0 = true;
 					if(A.children[1] != NULL) A1 = true;
@@ -4898,7 +4898,7 @@ template<class Treal>
 			if(B.children[2] != NULL) B2 = true;
 			if(B.children[3] != NULL) B3 = true;
 
-			std::vector<int> sub_skips0,sub_skips1,sub_skips2,sub_skips3,sub_skips4,sub_skips5,sub_skips6,sub_skips7;
+			std::vector<int> sub_skips0(length),sub_skips1(length),sub_skips2(length),sub_skips3(length),sub_skips4(length),sub_skips5(length),sub_skips6(length),sub_skips7(length);
 
 			if(!tA && !tB){
 					if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
