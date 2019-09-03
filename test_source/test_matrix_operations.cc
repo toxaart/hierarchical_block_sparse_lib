@@ -693,7 +693,7 @@ static int test_operations() {
 	taus.push_back(0.2);
 	taus.push_back(0.4);
 	taus.push_back(0.8);
-	std::vector<int> skips = MatrixType::count_skips(As, false, Bs, false, taus, apply_truncation, apply_spamm);
+	std::vector<unsigned long int> skips = MatrixType::count_skips(As, false, Bs, false, taus, apply_truncation, apply_spamm);
 	std::cout << "Skips counter, in total " << skips.size() << " skips." << std::endl;
 	for(int k = 0; k < skips.size(); ++k){
 		std::cout << "S[" << k << "] = " << skips[k] << " ";

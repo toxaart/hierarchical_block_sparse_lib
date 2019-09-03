@@ -286,9 +286,9 @@ namespace hbsm {
 
 			static bool worth_to_spamm(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, const Treal tau);
 
-			static std::vector<int> count_skips(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus, const bool & apply_truncation, const bool & apply_spamm);
+			static std::vector<unsigned long int> count_skips(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus, const bool & apply_truncation, const bool & apply_spamm);
 
-			static std::vector<int> sum_skips(std::vector<int> const & curr_level_skips, std::vector<std::vector<int> > const & sub_skips);
+			static std::vector<unsigned long int> sum_skips(std::vector<unsigned long int> const & curr_level_skips, std::vector<std::vector<unsigned long int> > const & sub_skips);
 
 			Treal get_max_abs_value() const;
 
@@ -4777,12 +4777,12 @@ template<class Treal>
 		}
 
 	template<class Treal>
-		std::vector<int> HierarchicalBlockSparseMatrix<Treal>::count_skips(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA,
+		std::vector<unsigned long int> HierarchicalBlockSparseMatrix<Treal>::count_skips(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA,
 			 HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus,
 		   const bool & apply_truncation, const bool & apply_spamm){
 
 	    // look at the current level
-			std::vector<int> curr_level_skips;
+			std::vector<unsigned long int> curr_level_skips;
 			const int length = taus.size();
 			curr_level_skips.resize(length);
 
@@ -4832,28 +4832,28 @@ template<class Treal>
 					if(B.children[2] != NULL) B2 = true;
 					if(B.children[3] != NULL) B3 = true;
 
-					std::vector<int> sub_skips0(length),sub_skips1(length),sub_skips2(length),sub_skips3(length);
+					std::vector<unsigned long int> sub_skips0(length),sub_skips1(length),sub_skips2(length),sub_skips3(length);
 
 					if(B0) sub_skips0 = count_skips(A, tA, *B.children[0],tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips0.begin(), sub_skips0.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips0.begin(), sub_skips0.end(), [](unsigned long int &n){ n++; });
 					if(tB){
 						if(B2) sub_skips1 = count_skips(A, tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
-						else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](int &n){ n++; });
+						else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](unsigned long int &n){ n++; });
 
 						if(B1) sub_skips2 = count_skips(A, tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
-						else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](int &n){ n++; });
+						else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](unsigned long int &n){ n++; });
 					}
 					else{
 						if(B1) sub_skips1 = count_skips(A, tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
-						else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](int &n){ n++; });
+						else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](unsigned long int &n){ n++; });
 
 						if(B2) sub_skips2 = count_skips(A, tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
-						else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](int &n){ n++; });
+						else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](unsigned long int &n){ n++; });
 					}
 					if(B3) sub_skips3 = count_skips(A, tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips3.begin(), sub_skips3.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips3.begin(), sub_skips3.end(), [](unsigned long int &n){ n++; });
 
-					std::vector<std::vector<int> > all_subskips;
+					std::vector<std::vector<unsigned long int> > all_subskips;
 					all_subskips.push_back(std::move(sub_skips0));
 					all_subskips.push_back(std::move(sub_skips1));
 					all_subskips.push_back(std::move(sub_skips2));
@@ -4866,7 +4866,7 @@ template<class Treal>
 
 					bool A0 = false, A1 = false, A2 = false, A3 = false;
 
-					std::vector<int> sub_skips0(length),sub_skips1(length),sub_skips2(length),sub_skips3(length);
+					std::vector<unsigned long int> sub_skips0(length),sub_skips1(length),sub_skips2(length),sub_skips3(length);
 
 					if(A.children[0] != NULL) A0 = true;
 					if(A.children[1] != NULL) A1 = true;
@@ -4874,25 +4874,25 @@ template<class Treal>
 					if(A.children[3] != NULL) A3 = true;
 
 					if(A0) sub_skips0 = count_skips(*A.children[0], tA, B, tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips0.begin(), sub_skips0.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips0.begin(), sub_skips0.end(), [](unsigned long int &n){ n++; });
 					if(tA){
 						if(A2) sub_skips1 = count_skips(*A.children[2], tA, B, tB, taus, apply_truncation, apply_spamm);
-						else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](int &n){ n++; });
+						else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](unsigned long int &n){ n++; });
 
 						if(A1) sub_skips2 = count_skips(*A.children[1], tA, B, tB, taus, apply_truncation, apply_spamm);
-						else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](int &n){ n++; });
+						else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](unsigned long int &n){ n++; });
 					}
 					else{
 						if(A1) sub_skips1 = count_skips(*A.children[1], tA, B, tB, taus, apply_truncation, apply_spamm);
-						else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](int &n){ n++; });
+						else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](unsigned long int &n){ n++; });
 
 						if(A2) sub_skips2 = count_skips(*A.children[2], tA, B, tB, taus, apply_truncation, apply_spamm);
-						else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](int &n){ n++; });
+						else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](unsigned long int &n){ n++; });
 					}
 					if(A3) sub_skips3 = count_skips(*A.children[3], tA, B, tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips3.begin(), sub_skips3.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips3.begin(), sub_skips3.end(), [](unsigned long int &n){ n++; });
 
-					std::vector<std::vector<int> > all_subskips;
+					std::vector<std::vector<unsigned long int> > all_subskips;
 					all_subskips.push_back(std::move(sub_skips0));
 					all_subskips.push_back(std::move(sub_skips1));
 					all_subskips.push_back(std::move(sub_skips2));
@@ -4913,116 +4913,116 @@ template<class Treal>
 			if(B.children[2] != NULL) B2 = true;
 			if(B.children[3] != NULL) B3 = true;
 
-			std::vector<int> sub_skips0(length),sub_skips1(length),sub_skips2(length),sub_skips3(length),sub_skips4(length),sub_skips5(length),sub_skips6(length),sub_skips7(length);
+			std::vector<unsigned long int> sub_skips0(length),sub_skips1(length),sub_skips2(length),sub_skips3(length),sub_skips4(length),sub_skips5(length),sub_skips6(length),sub_skips7(length);
 
 			if(!tA && !tB){
 					if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips0.begin(), sub_skips0.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips0.begin(), sub_skips0.end(), [](unsigned long int &n){ n++; });
 
 					if(A2 && B1) sub_skips1 = count_skips(*A.children[2], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](unsigned long int &n){ n++; });
 
 					if(A1 && B0) sub_skips2 = count_skips(*A.children[1], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](unsigned long int &n){ n++; });
 
 					if(A3 && B1) sub_skips3 = count_skips(*A.children[3], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips3.begin(), sub_skips3.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips3.begin(), sub_skips3.end(), [](unsigned long int &n){ n++; });
 
 					if(A0 && B2) sub_skips4 = count_skips(*A.children[0], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips4.begin(), sub_skips4.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips4.begin(), sub_skips4.end(), [](unsigned long int &n){ n++; });
 
 					if(A2 && B3) sub_skips5 = count_skips(*A.children[2], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips5.begin(), sub_skips5.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips5.begin(), sub_skips5.end(), [](unsigned long int &n){ n++; });
 
 					if(A1 && B2) sub_skips6 = count_skips(*A.children[1], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips6.begin(), sub_skips6.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips6.begin(), sub_skips6.end(), [](unsigned long int &n){ n++; });
 
 					if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips7.begin(), sub_skips7.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips7.begin(), sub_skips7.end(), [](unsigned long int &n){ n++; });
 
  			}
 
 			if(!tA && tB){
 					if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips0.begin(), sub_skips0.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips0.begin(), sub_skips0.end(), [](unsigned long int &n){ n++; });
 
 					if(A2 && B2) sub_skips1 = count_skips(*A.children[2], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](unsigned long int &n){ n++; });
 
 					if(A1 && B0) sub_skips2 = count_skips(*A.children[1], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](unsigned long int &n){ n++; });
 
 					if(A3 && B2) sub_skips3 = count_skips(*A.children[3], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips3.begin(), sub_skips3.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips3.begin(), sub_skips3.end(), [](unsigned long int &n){ n++; });
 
 					if(A0 && B1) sub_skips4 = count_skips(*A.children[0], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips4.begin(), sub_skips4.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips4.begin(), sub_skips4.end(), [](unsigned long int &n){ n++; });
 
 					if(A2 && B3) sub_skips5 = count_skips(*A.children[2], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips5.begin(), sub_skips5.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips5.begin(), sub_skips5.end(), [](unsigned long int &n){ n++; });
 
 					if(A1 && B1) sub_skips6 = count_skips(*A.children[1], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips6.begin(), sub_skips6.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips6.begin(), sub_skips6.end(), [](unsigned long int &n){ n++; });
 
 					if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips7.begin(), sub_skips7.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips7.begin(), sub_skips7.end(), [](unsigned long int &n){ n++; });
 			}
 
 			if(tA && !tB){
 					if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips0.begin(), sub_skips0.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips0.begin(), sub_skips0.end(), [](unsigned long int &n){ n++; });
 
 					if(A1 && B1) sub_skips1 = count_skips(*A.children[1], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](unsigned long int &n){ n++; });
 
 					if(A2 && B0) sub_skips2 = count_skips(*A.children[2], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](unsigned long int &n){ n++; });
 
 					if(A3 && B1) sub_skips3 = count_skips(*A.children[3], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips3.begin(), sub_skips3.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips3.begin(), sub_skips3.end(), [](unsigned long int &n){ n++; });
 
 					if(A0 && B2) sub_skips4 = count_skips(*A.children[0], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips4.begin(), sub_skips4.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips4.begin(), sub_skips4.end(), [](unsigned long int &n){ n++; });
 
 					if(A1 && B3) sub_skips5 = count_skips(*A.children[1], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips5.begin(), sub_skips5.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips5.begin(), sub_skips5.end(), [](unsigned long int &n){ n++; });
 
 					if(A2 && B2) sub_skips6 = count_skips(*A.children[2], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips6.begin(), sub_skips6.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips6.begin(), sub_skips6.end(), [](unsigned long int &n){ n++; });
 
 					if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips7.begin(), sub_skips7.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips7.begin(), sub_skips7.end(), [](unsigned long int &n){ n++; });
 			}
 
 			if(tA && tB){
 					if(A0 && B0) sub_skips0 = count_skips(*A.children[0], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips0.begin(), sub_skips0.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips0.begin(), sub_skips0.end(), [](unsigned long int &n){ n++; });
 
 					if(A1 && B2) sub_skips1 = count_skips(*A.children[1], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips1.begin(), sub_skips1.end(), [](unsigned long int &n){ n++; });
 
 					if(A2 && B0) sub_skips2 = count_skips(*A.children[2], tA, *B.children[0], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips2.begin(), sub_skips2.end(), [](unsigned long int &n){ n++; });
 
 					if(A3 && B2) sub_skips3 = count_skips(*A.children[3], tA, *B.children[2], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips3.begin(), sub_skips3.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips3.begin(), sub_skips3.end(), [](unsigned long int &n){ n++; });
 
 					if(A0 && B1) sub_skips4 = count_skips(*A.children[0], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips4.begin(), sub_skips4.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips4.begin(), sub_skips4.end(), [](unsigned long int &n){ n++; });
 
 					if(A1 && B3) sub_skips5 = count_skips(*A.children[1], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips5.begin(), sub_skips5.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips5.begin(), sub_skips5.end(), [](unsigned long int &n){ n++; });
 
 					if(A2 && B1) sub_skips6 = count_skips(*A.children[2], tA, *B.children[1], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips6.begin(), sub_skips6.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips6.begin(), sub_skips6.end(), [](unsigned long int &n){ n++; });
 
 					if(A3 && B3) sub_skips7 = count_skips(*A.children[3], tA, *B.children[3], tB, taus, apply_truncation, apply_spamm);
-					else std::for_each(sub_skips7.begin(), sub_skips7.end(), [](int &n){ n++; });
+					else std::for_each(sub_skips7.begin(), sub_skips7.end(), [](unsigned long int &n){ n++; });
 			}
 
 
 
-			std::vector<std::vector<int> > all_subskips;
+			std::vector<std::vector<unsigned long int> > all_subskips;
 			all_subskips.push_back(std::move(sub_skips0));
 			all_subskips.push_back(std::move(sub_skips1));
 			all_subskips.push_back(std::move(sub_skips2));
@@ -5039,9 +5039,9 @@ template<class Treal>
 	}
 
  template<class Treal>
- 		std::vector<int> HierarchicalBlockSparseMatrix<Treal>::sum_skips(std::vector<int> const & curr_level_skips, std::vector<std::vector<int> > const & sub_skips){
+ 		std::vector<unsigned long int> HierarchicalBlockSparseMatrix<Treal>::sum_skips(std::vector<unsigned long int> const & curr_level_skips, std::vector<std::vector<unsigned long int> > const & sub_skips){
 
-			  std::vector<int> total_skips;
+			  std::vector<unsigned long int> total_skips;
 				total_skips.resize(curr_level_skips.size());
 
 				for(int j = 0; j < curr_level_skips.size(); ++j){
@@ -5074,7 +5074,7 @@ template<class Treal>
 	template<class Treal>
 	  std::vector<Treal> HierarchicalBlockSparseMatrix<Treal>::get_errors_of_approx_multiplication(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus, const bool & apply_truncation, const bool & apply_spamm){
 
-			std::vector<int> skips = count_skips(A, tA, B, tB, taus, apply_truncation, apply_spamm);
+			std::vector<unsigned long int> skips = count_skips(A, tA, B, tB, taus, apply_truncation, apply_spamm);
 
 			assert(skips.size() == taus.size());
 
