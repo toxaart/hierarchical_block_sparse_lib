@@ -759,6 +759,9 @@ namespace hbsm {
 				else return children[3]->get_single_value(row-offset,col-offset);
 			}
 
+			throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_single_value: reached impossible point.");
+			return 0.0;
+
 		}
 
 	template<class Treal>
