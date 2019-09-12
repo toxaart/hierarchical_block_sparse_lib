@@ -5069,6 +5069,8 @@ template<class Treal>
 				for(auto i = 0; i < all_values.size(); ++i){
 					if(fabs(all_values[i]) > max_abs_value) max_abs_value = all_values[i];
 				}
+
+				return max_abs_value;
 		}
 
 	template<class Treal>
