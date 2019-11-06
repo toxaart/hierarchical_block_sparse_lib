@@ -701,9 +701,12 @@ static int test_operations() {
 	std::cout << std::endl;
 
 	std::vector<double> errors = MatrixType::get_errors_of_approx_multiplication(As, false, Bs, false, taus, apply_truncation, apply_spamm);
-	std::cout << "error counter, in total " << errors.size() << " skips." << std::endl;
+	std::vector<double> spamm_errors = MatrixType::get_spamm_errors(As, false, Bs, false, taus);
+
 	for(int k = 0; k < errors.size(); ++k){
 		std::cout << "E[" << k << "] = " << errors[k] << " ";
+		std::cout << "ESPAMM[" << k << "] = " << spamm_errors[k] << " ";
+		std::cout << std::endl;
 	}
 	std::cout << std::endl;
 
