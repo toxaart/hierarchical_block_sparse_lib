@@ -24,6 +24,7 @@
 #include "gblas.h"
 #include <random>
 #include <algorithm>
+#include <functional>
 #include <memory>
 #if BUILD_WITH_CUDA
 #include <cuda_runtime.h>
@@ -296,9 +297,22 @@ namespace hbsm {
 
 			static std::vector<Treal> get_spamm_errors(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus);
 
-			static std::vector<real> sum_spamm_errors(std::vector<real> const & curr_level_errors, std::vector<std::vector<real> > const & sub_errors);
+			static std::vector<Treal> sum_spamm_errors(std::vector<real> const & curr_level_errors, std::vector<std::vector<real> > const & sub_errors);
 
 	};
+
+	template <typename T>
+		std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
+		{
+		  assert(a.size() == b.size());
+
+		  std::vector<T> result;
+		  result.reserve(a.size());
+
+		  std::transform(a.begin(), a.end(), b.begin(),
+		                 std::back_inserter(result), std::plus<T>());
+		  return result;
+		}
 
 
 	template<class Treal>
@@ -5077,7 +5091,7 @@ template<class Treal>
 		template<class Treal>
 		  std::vector<Treal> HierarchicalBlockSparseMatrix<Treal>::get_spamm_errors(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus){
 
-        
+
 
 				// look at the current level
 			 std::vector<real> curr_level_errors;
@@ -5251,6 +5265,7 @@ template<class Treal>
 
 
 			std::vector<std::vector<real> > all_suberrors;
+			/*
 			all_suberrors.push_back(std::move(sub_errors0));
 			all_suberrors.push_back(std::move(sub_errors1));
 			all_suberrors.push_back(std::move(sub_errors2));
@@ -5258,7 +5273,12 @@ template<class Treal>
 			all_suberrors.push_back(std::move(sub_errors4));
 			all_suberrors.push_back(std::move(sub_errors5));
 			all_suberrors.push_back(std::move(sub_errors6));
-			all_suberrors.push_back(std::move(sub_errors7));
+			all_suberrors.push_back(std::move(sub_errors7));*/
+
+			all_suberrors.push_back(std::move(sub_errors0+sub_errors1));
+			all_suberrors.push_back(std::move(sub_errors2+sub_errors3));
+			all_suberrors.push_back(std::move(sub_errors4+sub_errors5));
+			all_suberrors.push_back(std::move(sub_errors6+sub_errors7));
 
 			return sum_spamm_errors(curr_level_errors, all_suberrors);
 
@@ -5275,8 +5295,9 @@ template<class Treal>
 	 					if(curr_level_errors[j] > 0.0) total_errors[j] = curr_level_errors[j];
 	 					else{
 	 						for(int i = 0; i < sub_errors.size();++i){
-	 							total_errors[j] += sub_errors[i][j];
+	 							total_errors[j] += sub_errors[i][j] * sub_errors[i][j];
 	 						}
+							total_errors[j] = std::sqrt(total_errors[j]);
 	 					}
 	 				}
 
