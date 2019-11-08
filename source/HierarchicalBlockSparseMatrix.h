@@ -5094,9 +5094,14 @@ template<class Treal>
 
 
 				// look at the current level
-			 std::vector<real> curr_level_errors;
 			 const int length = taus.size();
-			 curr_level_errors.resize(length);
+			 std::vector<real> curr_level_errors;
+
+			 if(!worth_to_multiply(A, tA, B, tB)){
+				 return curr_level_errors;
+			 }
+
+			 curr_level_errors.resize(length,0.0);
 
 			 Treal A_norm = std::sqrt(A.get_frob_norm_squared_internal());
 			 Treal B_norm = std::sqrt(B.get_frob_norm_squared_internal());
@@ -5106,8 +5111,7 @@ template<class Treal>
 			 for(int i = 0; i < length; ++i){
 
 				 	 // ensure that not only matrix product is small enough, but also that it is not empty, which might be the case
-					 if(product_of_norms < taus[i] && worth_to_multiply(A, tA, B, tB)) curr_level_errors[i] = product_of_norms;
-					 else curr_level_errors[i] = 0.0;
+					 if(product_of_norms < taus[i]) curr_level_errors[i] = product_of_norms;
 
 			 }
 
@@ -5123,9 +5127,11 @@ template<class Treal>
  					if(B.children[2] != NULL) B2 = true;
  					if(B.children[3] != NULL) B3 = true;
 
- 					std::vector<real> sub_errors0(length,0.0),sub_errors1(length,0.0),sub_errors2(length,0.0),sub_errors3(length,0.0);
+ 					std::vector<real> sub_errors0,sub_errors1,sub_errors2,sub_errors3;
 
- 					if(B0) sub_errors0 = get_spamm_errors(A, tA, *B.children[0],tB, taus);
+ 					if(B0){
+					  sub_errors0 = get_spamm_errors(A, tA, *B.children[0],tB, taus);
+				  }
  					if(tB){
  						if(B2) sub_errors1 = get_spamm_errors(A, tA, *B.children[2], tB, taus);
  						if(B1) sub_errors2 = get_spamm_errors(A, tA, *B.children[1], tB, taus);
@@ -5135,6 +5141,10 @@ template<class Treal>
  						if(B2) sub_errors2 = get_spamm_errors(A, tA, *B.children[2], tB, taus);
  					}
  					if(B3) sub_errors3 = get_spamm_errors(A, tA, *B.children[3], tB, taus);
+
+					if(sub_errors0.empty() && sub_errors1.empty() && sub_errors2.empty() && sub_errors3.empty()){
+						return curr_level_errors;
+					}
 
  					std::vector<std::vector<real> > all_suberrors;
  					all_suberrors.push_back(std::move(sub_errors0));
@@ -5149,7 +5159,7 @@ template<class Treal>
 
  					bool A0 = false, A1 = false, A2 = false, A3 = false;
 
- 					std::vector<real> sub_errors0(length,0.0),sub_errors1(length,0.0),sub_errors2(length,0.0),sub_errors3(length,0.0);
+ 					std::vector<real> sub_errors0,sub_errors1,sub_errors2,sub_errors3;
 
  					if(A.children[0] != NULL) A0 = true;
  					if(A.children[1] != NULL) A1 = true;
@@ -5166,6 +5176,10 @@ template<class Treal>
  						if(A2) sub_errors2 = get_spamm_errors(*A.children[2], tA, B, tB, taus);
  					}
  					if(A3) sub_errors3 = get_spamm_errors(*A.children[3], tA, B, tB, taus);
+
+					if(sub_errors0.empty() && sub_errors1.empty() && sub_errors2.empty() && sub_errors3.empty()){
+						return curr_level_errors;
+					}
 
 					std::vector<std::vector<real> > all_suberrors;
 					all_suberrors.push_back(std::move(sub_errors0));
@@ -5188,7 +5202,7 @@ template<class Treal>
 			if(B.children[2] != NULL) B2 = true;
 			if(B.children[3] != NULL) B3 = true;
 
-			std::vector<real> sub_errors0(length,0.0),sub_errors1(length,0.0),sub_errors2(length,0.0),sub_errors3(length,0.0),sub_errors4(length,0.0),sub_errors5(length,0.0),sub_errors6(length,0.0),sub_errors7(length,0.0);
+			std::vector<real> sub_errors0,sub_errors1,sub_errors2,sub_errors3,sub_errors4,sub_errors5,sub_errors6,sub_errors7;
 
 			if(!tA && !tB){
 					if(A0 && B0) sub_errors0 = get_spamm_errors(*A.children[0], tA, *B.children[0], tB, taus);
@@ -5262,23 +5276,32 @@ template<class Treal>
 					if(A3 && B3) sub_errors7 = get_spamm_errors(*A.children[3], tA, *B.children[3], tB, taus);
 			}
 
-
+			if(sub_errors0.empty() && sub_errors1.empty() && sub_errors2.empty() && sub_errors3.empty() &&
+				 sub_errors4.empty() && sub_errors5.empty() && sub_errors6.empty() && sub_errors7.empty() ){
+				return curr_level_errors;
+			}
 
 			std::vector<std::vector<real> > all_suberrors;
-			/*
-			all_suberrors.push_back(std::move(sub_errors0));
-			all_suberrors.push_back(std::move(sub_errors1));
-			all_suberrors.push_back(std::move(sub_errors2));
-			all_suberrors.push_back(std::move(sub_errors3));
-			all_suberrors.push_back(std::move(sub_errors4));
-			all_suberrors.push_back(std::move(sub_errors5));
-			all_suberrors.push_back(std::move(sub_errors6));
-			all_suberrors.push_back(std::move(sub_errors7));*/
 
-			all_suberrors.push_back(std::move(sub_errors0+sub_errors1));
-			all_suberrors.push_back(std::move(sub_errors2+sub_errors3));
-			all_suberrors.push_back(std::move(sub_errors4+sub_errors5));
-			all_suberrors.push_back(std::move(sub_errors6+sub_errors7));
+			if(sub_errors0.empty() && sub_errors1.empty()) all_suberrors.push_back(sub_errors0);
+			if(sub_errors0.empty() && !sub_errors1.empty()) all_suberrors.push_back(sub_errors1);
+			if(!sub_errors0.empty() && sub_errors1.empty()) all_suberrors.push_back(sub_errors0);
+			if(!sub_errors0.empty() && !sub_errors1.empty()) all_suberrors.push_back(sub_errors0+sub_errors1);
+
+			if(sub_errors2.empty() && sub_errors3.empty()) all_suberrors.push_back(sub_errors2);
+			if(sub_errors2.empty() && !sub_errors3.empty()) all_suberrors.push_back(sub_errors3);
+			if(!sub_errors2.empty() && sub_errors3.empty()) all_suberrors.push_back(sub_errors2);
+			if(!sub_errors2.empty() && !sub_errors3.empty()) all_suberrors.push_back(sub_errors2+sub_errors3);
+
+			if(sub_errors4.empty() && sub_errors5.empty()) all_suberrors.push_back(sub_errors4);
+			if(sub_errors4.empty() && !sub_errors5.empty()) all_suberrors.push_back(sub_errors5);
+			if(!sub_errors4.empty() && sub_errors5.empty()) all_suberrors.push_back(sub_errors4);
+			if(!sub_errors4.empty() && !sub_errors5.empty()) all_suberrors.push_back(sub_errors4+sub_errors5);
+
+			if(sub_errors6.empty() && sub_errors7.empty()) all_suberrors.push_back(sub_errors6);
+			if(sub_errors6.empty() && !sub_errors7.empty()) all_suberrors.push_back(sub_errors7);
+			if(!sub_errors6.empty() && sub_errors7.empty()) all_suberrors.push_back(sub_errors6);
+			if(!sub_errors6.empty() && !sub_errors7.empty()) all_suberrors.push_back(sub_errors6+sub_errors7);
 
 			return sum_spamm_errors(curr_level_errors, all_suberrors);
 
@@ -5287,15 +5310,16 @@ template<class Treal>
 		template<class Treal>
 	  		std::vector<Treal> HierarchicalBlockSparseMatrix<Treal>::sum_spamm_errors(std::vector<real> const & curr_level_errors, std::vector<std::vector<real> > const & sub_errors){
 
-	 			  std::vector<real> total_errors;
-	 				total_errors.resize(curr_level_errors.size());
+	 			  std::vector<real> total_errors(curr_level_errors.size(),0.0);
+
 
 	 				for(int j = 0; j < curr_level_errors.size(); ++j){
 
 	 					if(curr_level_errors[j] > 0.0) total_errors[j] = curr_level_errors[j];
 	 					else{
 	 						for(int i = 0; i < sub_errors.size();++i){
-	 							total_errors[j] += sub_errors[i][j] * sub_errors[i][j];
+								if(sub_errors[i].size() == 0) continue;
+								else total_errors[j] += sub_errors[i][j] * sub_errors[i][j];
 	 						}
 							total_errors[j] = std::sqrt(total_errors[j]);
 	 					}
