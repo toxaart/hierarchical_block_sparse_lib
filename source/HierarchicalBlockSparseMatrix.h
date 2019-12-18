@@ -5315,14 +5315,15 @@ template<class Treal>
 
 	 				for(int j = 0; j < curr_level_errors.size(); ++j){
 
-	 					if(curr_level_errors[j] > 0.0) total_errors[j] = curr_level_errors[j];
-	 					else{
+					// WHAT IS COMMENTED OUT IS DUE TO THE NEW VERSION OF THE ALGORITHM PROPOSED BY EMANUEL
+	 				//	if(curr_level_errors[j] > 0.0) total_errors[j] = curr_level_errors[j];
+	 				//	else{
 	 						for(int i = 0; i < sub_errors.size();++i){
 								if(sub_errors[i].size() == 0) continue;
 								else total_errors[j] += sub_errors[i][j] * sub_errors[i][j];
 	 						}
 							total_errors[j] = std::sqrt(total_errors[j]);
-	 					}
+	 					//}
 	 				}
 
 	 				return total_errors;
