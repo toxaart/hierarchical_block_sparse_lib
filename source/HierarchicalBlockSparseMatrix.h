@@ -299,6 +299,15 @@ namespace hbsm {
 
 			static std::vector<Treal> sum_spamm_errors(std::vector<real> const & curr_level_errors, std::vector<std::vector<real> > const & sub_errors);
 
+            static void anticommutator(HierarchicalBlockSparseMatrix<Treal> const & A,
+			      HierarchicalBlockSparseMatrix<Treal> const & B,
+			      HierarchicalBlockSparseMatrix<Treal> & C){throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::anticommutator: function not applicable.");}; 
+
+            static void symm_product(HierarchicalBlockSparseMatrix<Treal> const & A,
+			      HierarchicalBlockSparseMatrix<Treal> const & B,
+                  const bool first_transposed,
+			      HierarchicalBlockSparseMatrix<Treal> & C){throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::symm_product: function not applicable.");}; 
+
 	};
 
 	template <typename T>
