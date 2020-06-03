@@ -663,9 +663,12 @@ static int test_operations() {
 
 	MatrixType AsxBs;
 
+	n_resizes = 0;
+
 	MatrixType::spamm(As, false, Bs, false, AsxBs, 0.2, true, &n_multiplications, &n_resizes);
 
 	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
+
 
 	MatrixType AsxBs_ref;
 	AsxBs_ref.set_params(param);
@@ -678,8 +681,6 @@ static int test_operations() {
 		set_row(tmp, 3, 5, 31.1, 27, 1);
 		tmp.assign(AsxBs_ref);
 	}
-
-
 
 	verify_that_matrices_are_equal(AsxBs_ref, AsxBs);
 
