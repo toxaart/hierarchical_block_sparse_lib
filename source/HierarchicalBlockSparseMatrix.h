@@ -35,7 +35,7 @@
 #include "CudaSyncPtr.h"
 #endif
 
-#define USE_BATCH_MULTIPLY 0
+#define USE_BATCH_MULTIPLY 1
 
 // Use namespace hbsm: "hierarchical block sparse matrix library".
 namespace hbsm {
