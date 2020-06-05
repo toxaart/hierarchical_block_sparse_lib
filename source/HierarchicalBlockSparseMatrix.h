@@ -55,6 +55,7 @@ namespace hbsm {
 			int nCols_orig; // before 'virtual size' has been computed
 			int blocksize; // size of blocks at the lowest level (blocksize x blocksize)
 			Treal frob_norm_squared_internal;
+			size_t n_block_multiplies;
 			std::shared_ptr<HierarchicalBlockSparseMatrix<real> > children[4]; // array of pointers to the next level.
 			HierarchicalBlockSparseMatrix<real>* parent; // way to go to top level;
 			/*		child0 | child2
@@ -138,7 +139,7 @@ namespace hbsm {
 			  int blocksize;
 			};
 
-			HierarchicalBlockSparseMatrix():nRows(0), nCols(0),nRows_orig(0), nCols_orig(0), blocksize(-1), frob_norm_squared_internal(0.0){
+			HierarchicalBlockSparseMatrix():nRows(0), nCols(0),nRows_orig(0), nCols_orig(0), blocksize(-1), frob_norm_squared_internal(0.0), n_block_multiplies(0){
 				parent = NULL;
 			}
 
@@ -170,6 +171,8 @@ namespace hbsm {
 			Treal get_frob_squared() const;
 
 			Treal get_frob_norm_squared_internal() const {return frob_norm_squared_internal;}
+
+			size_t get_n_block_multiplications() const {return n_block_multiplies;}
 
 			void update_internal_info();
 
@@ -1079,13 +1082,13 @@ namespace hbsm {
 
 	template<class Treal>
 		size_t HierarchicalBlockSparseMatrix<Treal>::get_size() const  {
-			if(empty()) return 5 * sizeof(int) + 4 * sizeof(size_t) + 1 * sizeof(Treal);
+			if(empty()) return 5 * sizeof(int) + 4 * sizeof(size_t) + 1 * sizeof(Treal)  + 1 * sizeof(size_t);
 
 			if(lowest_level()){
-				return 5 * sizeof(int) + 4 * sizeof(size_t) + 1 * sizeof(Treal) + submatrix.size() * sizeof(Treal);
+				return 5 * sizeof(int) + 4 * sizeof(size_t) + 1 * sizeof(Treal) + 1 * sizeof(size_t) + submatrix.size() * sizeof(Treal);
 			}
 
-			size_t totalsize = 5 * sizeof(int) + 4 * sizeof(size_t) + 1 * sizeof(Treal); // keep sizes of children in a row!
+			size_t totalsize = 5 * sizeof(int) + 4 * sizeof(size_t) + 1 * sizeof(Treal) + 1 * sizeof(size_t); // keep sizes of children in a row!
 
 
 			if(children[0] != NULL){
@@ -1147,6 +1150,10 @@ namespace hbsm {
 				p += sizeof(Treal);
 				n_bytes_written += sizeof(Treal);
 
+				memcpy(p, &n_block_multiplies, sizeof(size_t));
+				p += sizeof(size_t);
+				n_bytes_written += sizeof(size_t);
+
 				//no children - write 4 zeros!
 				size_t zero_size = 0;
 				memcpy(p, &zero_size, sizeof(size_t));
@@ -1188,6 +1195,9 @@ namespace hbsm {
 
 				memcpy(p, &frob_norm_squared_internal, sizeof(Treal));
 				p += sizeof(Treal);
+
+				memcpy(p, &n_block_multiplies, sizeof(size_t));
+				p += sizeof(size_t);
 
 				//no children - write 4 zeros!
 				size_t zero_size = 0;
@@ -1254,6 +1264,9 @@ namespace hbsm {
 
 			memcpy(p, &frob_norm_squared_internal, sizeof(Treal));
 			p += sizeof(Treal);
+
+			memcpy(p, &n_block_multiplies, sizeof(size_t));
+			p += sizeof(size_t);
 
 			// write sizes of children even if they are zeros!
 			memcpy(p, &size_child0, sizeof(size_t));
@@ -1325,6 +1338,10 @@ namespace hbsm {
 			memcpy(&frob_norm_squared_internal, p, sizeof(Treal));
 			p += sizeof(Treal);
 			n_bytes_left_to_read -= sizeof(Treal);
+
+			memcpy(&n_block_multiplies, p, sizeof(size_t));
+			p += sizeof(size_t);
+			n_bytes_left_to_read -= sizeof(size_t);
 
 			size_t child0_size, child1_size, child2_size, child3_size;
 
@@ -1453,6 +1470,7 @@ namespace hbsm {
 			}
 
 			frob_norm_squared_internal = other.frob_norm_squared_internal;
+			n_block_multiplies = other.n_block_multiplies;
 
 			for(int i = 0; i < 4; ++i){
 				if(children[i] != NULL)
@@ -2180,6 +2198,8 @@ namespace hbsm {
 				if(no_of_block_multiplies != NULL){
 					*no_of_block_multiplies = batches.size();
 				}
+
+				C.n_block_multiplies = batches.size();
 
 				return;
 

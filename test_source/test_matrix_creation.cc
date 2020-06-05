@@ -127,7 +127,7 @@ static int test_creation() {
 	
 
 	size_t size = M.get_size();
-    if(size != 496) // two children each 5*4 + 4*8 + 1*8 + 16*8 = 188, plus 2 higher levels 60 bytes each
+    if(size != 528) // two children each 5*4 + 4*8 + 1*8 + 1*8 + 16*8 = 196, plus 2 higher levels 68 bytes each
         throw std::runtime_error("Error: wrong result from get_size().");
 
 	std::vector<char> buf(size);
