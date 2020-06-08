@@ -1612,8 +1612,7 @@ namespace hbsm {
 				       HierarchicalBlockSparseMatrix<Treal> & C,
 					   size_t* no_of_resizes){
 
-
-            if(!C.empty()) C.clear();
+      if(!C.empty()) C.clear();
 
 			if(A.empty() && B.empty()){
 				return;
@@ -1711,6 +1710,8 @@ namespace hbsm {
 				}
 
 			}
+
+			C.n_block_multiplies = A.get_n_block_multiplications() + B.get_n_block_multiplications();
 
 			return;
 		}
@@ -4002,6 +4003,8 @@ template<class Treal>
 				if(no_of_block_multiplies != NULL){
 					*no_of_block_multiplies = batches.size();
 				}
+
+				C.n_block_multiplies = batches.size();
 
 				return;
 
