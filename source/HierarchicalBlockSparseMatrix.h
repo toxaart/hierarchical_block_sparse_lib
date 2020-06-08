@@ -149,6 +149,7 @@ namespace hbsm {
 			}
 
 
+
 			int get_n_rows() const; //returns n_rows in ORIGINAL matrix, can be called from any level still gives results for original matrix
 			int get_n_cols() const; //returns n_cols in ORIGINAL matrix, can be called from any level still gives results for original matrix
 			void set_params(Params const & param);
@@ -173,6 +174,8 @@ namespace hbsm {
 			Treal get_frob_norm_squared_internal() const {return frob_norm_squared_internal;}
 
 			size_t get_n_block_multiplications() const {return n_block_multiplies;}
+
+			void set_n_block_multiplicaitons(size_t n) {n_block_multiplies = n;}
 
 			void update_internal_info();
 

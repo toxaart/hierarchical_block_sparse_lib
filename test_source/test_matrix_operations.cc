@@ -498,10 +498,11 @@ static int test_operations() {
 		printf("Worth ? %d \n", MatrixType::worth_to_multiply(B_3level, true, A_2level, false));
 
 		MatrixType BT_3level_times_A_2level;
-        std::cout << "BT_3level_times_A_2level n muls before = " << BT_3level_times_A_2level.get_n_block_multiplications() << std::endl;
+    std::cout << "BT_3level_times_A_2level n muls before = " << BT_3level_times_A_2level.get_n_block_multiplications() << std::endl;
 		MatrixType::multiply(B_3level, true, A_2level, false, BT_3level_times_A_2level);
-        std::cout << "BT_3level_times_A_2level n muls after = " << BT_3level_times_A_2level.get_n_block_multiplications() << std::endl;
+    std::cout << "BT_3level_times_A_2level n muls after = " << BT_3level_times_A_2level.get_n_block_multiplications() << std::endl;
 		verify_that_matrices_are_equal(BT_3level_times_A_2level, BT_3level_times_A_2level_ref);
+		assert(BT_3level_times_A_2level.get_n_block_multiplications() == 12);
 
 	}
 
