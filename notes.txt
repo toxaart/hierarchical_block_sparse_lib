@@ -1,6 +1,0 @@
-This repository is intended for a hierarchical block-sparse matrix
-library that Anton Artemov is working on.
-
-The idea is that this library could be used as a leaf matrix library
-instead of e.g. block_sparse_matrix_lib or basic_matrix_lib especially
-for the purpose of testing the SpAMM multiplication approach.
