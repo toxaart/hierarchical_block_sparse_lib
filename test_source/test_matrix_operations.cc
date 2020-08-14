@@ -506,8 +506,6 @@ static int test_operations() {
 
 	}
 
-
-
 	// test rescale
 
 	MatrixType minus_A;
@@ -627,121 +625,119 @@ static int test_operations() {
   X.resize(6,6);
   X.random_blocks(3);
 
-  //X.print();
-
   if(X.get_nnz() != 27) throw std::runtime_error("Error: random_blocks() gave wrong value.");
 
 
 
-  {//Test SpAMM
+	  {//Test SpAMM
 
-	param.blocksize = 2 ;
+		param.blocksize = 2 ;
 
-	MatrixType As;
-	As.set_params(param);
-	As.resize(4, 4, &n_resizes);
-	{
-		SparseMatrix tmp;
-		set_row(tmp, 0, 1, 2, 0.1, 0.1);
-		set_row(tmp, 1, 2, 1, 0.1, 0.1);
-		set_row(tmp, 2, 3, 1, 0, 0);
-		set_row(tmp, 3, 5, 1, 0, 0.1);
-		tmp.assign(As);
-	}
-	As.update_internal_info();
+		MatrixType As;
+		As.set_params(param);
+		As.resize(4, 4, &n_resizes);
+		{
+			SparseMatrix tmp;
+			set_row(tmp, 0, 1, 2, 0.1, 0.1);
+			set_row(tmp, 1, 2, 1, 0.1, 0.1);
+			set_row(tmp, 2, 3, 1, 0, 0);
+			set_row(tmp, 3, 5, 1, 0, 0.1);
+			tmp.assign(As);
+		}
+		As.update_internal_info();
 
-	MatrixType Bs;
-	Bs.set_params(param);
-	Bs.resize(4, 4, &n_resizes);
-	{
-		SparseMatrix tmp;
-		set_row(tmp, 0, 1, 6, 5, 0);
-		set_row(tmp, 1, 0, 1, 2, 1);
-		set_row(tmp, 2, 2, 1, 0.1, 0.1);
-		set_row(tmp, 3, 0, 1, 0.1, 0.1);
-		tmp.assign(Bs);
-	}
-	Bs.update_internal_info();
+		MatrixType Bs;
+		Bs.set_params(param);
+		Bs.resize(4, 4, &n_resizes);
+		{
+			SparseMatrix tmp;
+			set_row(tmp, 0, 1, 6, 5, 0);
+			set_row(tmp, 1, 0, 1, 2, 1);
+			set_row(tmp, 2, 2, 1, 0.1, 0.1);
+			set_row(tmp, 3, 0, 1, 0.1, 0.1);
+			tmp.assign(Bs);
+		}
+		Bs.update_internal_info();
 
-	MatrixType AsxBs;
+		MatrixType AsxBs;
 
-	n_resizes = 0;
+		n_resizes = 0;
 
-	MatrixType::spamm(As, false, Bs, false, AsxBs, 0.2, true, &n_multiplications, &n_resizes);
+		MatrixType::spamm(As, false, Bs, false, AsxBs, 0.2, true, &n_multiplications, &n_resizes);
 
-	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
+		std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
 
 
-	MatrixType AsxBs_ref;
-	AsxBs_ref.set_params(param);
-	AsxBs_ref.resize(4, 4, &n_resizes);
-	{
-		SparseMatrix tmp;
-		set_row(tmp, 0, 1.2, 8.2, 9, 2);
-		set_row(tmp, 1, 2.2, 13.2, 12, 1);
-		set_row(tmp, 2, 3, 19, 17, 1);
-		set_row(tmp, 3, 5, 31.1, 27, 1);
-		tmp.assign(AsxBs_ref);
-	}
+		MatrixType AsxBs_ref;
+		AsxBs_ref.set_params(param);
+		AsxBs_ref.resize(4, 4, &n_resizes);
+		{
+			SparseMatrix tmp;
+			set_row(tmp, 0, 1.2, 8.2, 9, 2);
+			set_row(tmp, 1, 2.2, 13.2, 12, 1);
+			set_row(tmp, 2, 3, 19, 17, 1);
+			set_row(tmp, 3, 5, 31.1, 27, 1);
+			tmp.assign(AsxBs_ref);
+		}
 
-	verify_that_matrices_are_equal(AsxBs_ref, AsxBs);
+		verify_that_matrices_are_equal(AsxBs_ref, AsxBs);
 
-	bool apply_truncation = false;
-	bool apply_spamm = true;
-  std::vector<double> taus;
-	taus.push_back(0.0125);
-	taus.push_back(0.025);
-	taus.push_back(0.05);
-	taus.push_back(0.1);
-	taus.push_back(0.2);
-	taus.push_back(0.4);
-	taus.push_back(0.8);
-	std::vector<unsigned long int> skips = MatrixType::count_skips(As, false, Bs, false, taus, apply_truncation, apply_spamm);
-	std::cout << "Skips counter, in total " << skips.size() << " skips." << std::endl;
-	for(int k = 0; k < skips.size(); ++k){
-		std::cout << "S[" << k << "] = " << skips[k] << " ";
-	}
-	std::cout << std::endl;
-
-	std::vector<double> errors = MatrixType::get_errors_of_approx_multiplication(As, false, Bs, false, taus, apply_truncation, apply_spamm);
-	std::vector<double> spamm_errors = MatrixType::get_spamm_errors(As, false, Bs, false, taus);
-
-	for(int k = 0; k < errors.size(); ++k){
-		std::cout << "E[" << k << "] = " << errors[k] << " ";
-		std::cout << "ESPAMM[" << k << "] = " << spamm_errors[k] << " ";
+		bool apply_truncation = false;
+		bool apply_spamm = true;
+	  std::vector<double> taus;
+		taus.push_back(0.0125);
+		taus.push_back(0.025);
+		taus.push_back(0.05);
+		taus.push_back(0.1);
+		taus.push_back(0.2);
+		taus.push_back(0.4);
+		taus.push_back(0.8);
+		std::vector<unsigned long int> skips = MatrixType::count_skips(As, false, Bs, false, taus, apply_truncation, apply_spamm);
+		std::cout << "Skips counter, in total " << skips.size() << " skips." << std::endl;
+		for(int k = 0; k < skips.size(); ++k){
+			std::cout << "S[" << k << "] = " << skips[k] << " ";
+		}
 		std::cout << std::endl;
-	}
-	std::cout << std::endl;
 
-	for(int k = 0; k < taus.size(); ++k){
-		MatrixType AsxBs_approx, AsxBs_exact, minus_AsxBs_exact, AsxBs_error;
-		MatrixType::spamm(As, false, Bs, false, AsxBs_approx, taus[k], true);
-		MatrixType::spamm(As, false, Bs, false, AsxBs_exact, 0.0, true);
-		minus_AsxBs_exact.rescale(AsxBs_exact, -1.0);
-		MatrixType::add(AsxBs_approx, minus_AsxBs_exact, AsxBs_error);
-		double error_norm_squared = AsxBs_error.get_frob_squared();
-		std::cout << "Error in  multiplication with tau = " << taus[k] << " is " << std::sqrt(error_norm_squared) << std::endl;
-		if(errors[k] > 0) assert(std::sqrt(error_norm_squared) < errors[k]);
-	}
+		std::vector<double> errors = MatrixType::get_errors_of_approx_multiplication(As, false, Bs, false, taus, apply_truncation, apply_spamm);
+		std::vector<double> spamm_errors = MatrixType::get_spamm_errors(As, false, Bs, false, taus);
 
+		for(int k = 0; k < errors.size(); ++k){
+			std::cout << "E[" << k << "] = " << errors[k] << " ";
+			std::cout << "ESPAMM[" << k << "] = " << spamm_errors[k] << " ";
+			std::cout << std::endl;
+		}
+		std::cout << std::endl;
 
-
-
-
-
-
-	MatrixType AsxBsT;
-	MatrixType::spamm(As, false, Bs, true, AsxBsT, 0.2, true, &n_multiplications, &n_resizes);
-	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
-
-	MatrixType AsTxBs;
-	MatrixType::spamm(As, true, Bs, false, AsTxBs, 0.2, true, &n_multiplications, &n_resizes);
-	std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
+		for(int k = 0; k < taus.size(); ++k){
+			MatrixType AsxBs_approx, AsxBs_exact, minus_AsxBs_exact, AsxBs_error;
+			MatrixType::spamm(As, false, Bs, false, AsxBs_approx, taus[k], true);
+			MatrixType::spamm(As, false, Bs, false, AsxBs_exact, 0.0, true);
+			minus_AsxBs_exact.rescale(AsxBs_exact, -1.0);
+			MatrixType::add(AsxBs_approx, minus_AsxBs_exact, AsxBs_error);
+			double error_norm_squared = AsxBs_error.get_frob_squared();
+			std::cout << "Error in  multiplication with tau = " << taus[k] << " is " << std::sqrt(error_norm_squared) << std::endl;
+			if(errors[k] > 0) assert(std::sqrt(error_norm_squared) < errors[k]);
+		}
 
 
-	MatrixType AsTxBsT;
-	MatrixType::spamm(As, true, Bs, true, AsTxBsT, 0.2, true, &n_multiplications, &n_resizes);
-    std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
+
+
+
+
+
+		MatrixType AsxBsT;
+		MatrixType::spamm(As, false, Bs, true, AsxBsT, 0.2, true, &n_multiplications, &n_resizes);
+		std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
+
+		MatrixType AsTxBs;
+		MatrixType::spamm(As, true, Bs, false, AsTxBs, 0.2, true, &n_multiplications, &n_resizes);
+		std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
+
+
+		MatrixType AsTxBsT;
+		MatrixType::spamm(As, true, Bs, true, AsTxBsT, 0.2, true, &n_multiplications, &n_resizes);
+	  std::cout << "SPAMM finished, n_mults =  " << n_multiplications << ", n_resizes = " << n_resizes << std::endl;
 
   }
 
@@ -828,7 +824,7 @@ static int test_operations() {
 		cols2.push_back(0);
 		vals2.push_back(8);
 
-	    Bs.assign_from_vectors(rows2,cols2,vals2);
+    Bs.assign_from_vectors(rows2,cols2,vals2);
 
 		MatrixType AsxBs;
 
@@ -906,145 +902,14 @@ static int test_operations() {
 
 		MatrixType::multiply(As, false, Bs, false, AsxBs);
 
-	    verify_that_matrices_are_equal(AsxBs, Cs);
+    verify_that_matrices_are_equal(AsxBs, Cs);
 
 		assert(AsxBs.get_depth() == Cs.get_depth());
 
 
   }
 
-/*
-
-  if (verbose)
-    std::cout << "Test get_row_sums" << std::endl;
-  // Test get_col_sums()
-  {
-    MatrixType A;
-    A.set_params(param);
-    A.resize(3,3);
-    {
-      SparseMatrix tmp;
-      set_row(tmp, 0, 5, 2, 3);
-      set_row(tmp, 1, 0, 3, 1);
-      set_row(tmp, 2, 0, 0, 1);
-      tmp.assign(A);
-    }
-    std::vector<double> res;
-    A.get_row_sums(res);
-    if(res.size() != 3)
-      throw std::runtime_error("Error: get_row_sums() gave wrong size.");
-
-    for(int i = 0; i < 3; ++i)
-      if(res[i] != 5 )
-	throw std::runtime_error("Error: get_row_sums() gave wrong value.");
-  }
- */
-
-/*
-  if (verbose)
-    std::cout << "Test spectral_norm" << std::endl;
-  // Test spectral_norm() non-symm
-  {
-    MatrixType A;
-    A.set_params(param);
-    A.resize(3,3);
-    {
-      SparseMatrix tmp;
-      set_row(tmp, 0, 1, 2, 3);
-      set_row(tmp, 1, 1, 5, 6);
-      set_row(tmp, 2, 3, 6, 9);
-      tmp.assign(A);
-    }
-    double norm = 0;
-    norm = A.spectral_norm();
-    if(fabs(norm - 14.16525336) >= 1e-8)
-      throw std::runtime_error("Error: spectral_norm(0) gave wrong value.");
-  }
-  // Test spectral_norm() symm
-  {
-    MatrixType A;
-    A.set_params(param);
-    A.resize(3,3);
-    {
-      SparseMatrix tmp;
-      set_row(tmp, 0, 1, 2, 3);
-      set_row(tmp, 1, 0, 5, 6);
-      set_row(tmp, 2, 0, 0, 9);
-      tmp.assign(A);
-    }
-    double norm = 0;
-    norm = A.spectral_norm(1);
-    if(fabs(norm - 14.300735254) >= 1e-8)
-      throw std::runtime_error("Error: spectral_norm(1) gave wrong value.");
-  }*/
-
-  // // Test get_nnz_in_submatrix() non-symm
-  // {
-  //   MatrixType A;
-  //   A.set_params(param);
-  //   A.resize(7,7);
-  //   {
-  //     SparseMatrix tmp;
-  //     set_row(tmp, 0, 1, 2, 3, 4, 5, 6, 7);
-  //     set_row(tmp, 1, 1, 2, 3, 4, 5, 6, 7);
-  //     set_row(tmp, 2, 1, 2, 3, 4, 5, 6, 7);
-  //     set_row(tmp, 3, 1, 2, 3, 4, 5, 6, 7);
-  //     set_row(tmp, 4, 1, 2, 3, 4, 5, 6, 7);
-  //     set_row(tmp, 5, 1, 2, 3, 4, 5, 6, 7);
-  //     set_row(tmp, 6, 1, 2, 3, 4, 5, 6, 7);
-  //     tmp.assign(A);
-  //   }
-
-  //   std::vector<int> rows;
-  //   std::vector<int> cols;
-  //   std::vector<double> vals;
-  //   int M1 = 2;
-  //   int M2 = 3;
-  //   int N1 = 2;
-  //   int N2 = 3;
-  //   A.get_nnz_in_submatrix(rows, cols,vals,
-  // 			   M1, M2, N1, N2);
-
-  //   for(int j = 0; j < vals.size(); j++)
-  //     std::cout << vals[j] << " ";
-  //   std::cout << std::endl;
-
-
-  // }
-
-
-  // // Test get_diag_part()
-  // {
-  //   MatrixType A;
-  //   A.set_params(param);
-  //   A.resize(7,7);
-  //   {
-  //     SparseMatrix tmp;
-  //     set_row(tmp, 0, 1, 2, 3, 4, 5, 6, 7);
-  //     set_row(tmp, 1, 1, 2, 3, 4, 5, 6, 7);
-  //     set_row(tmp, 2, 1, 2, 3, 4, 5, 6, 7);
-  //     set_row(tmp, 3, 1, 2, 3, 4, 5, 6, 7);
-  //     set_row(tmp, 4, 1, 2, 3, 4, 5, 6, 7);
-  //     set_row(tmp, 5, 1, 2, 3, 4, 5, 6, 7);
-  //     set_row(tmp, 6, 1, 2, 3, 4, 5, 6, 7);
-  //     tmp.assign(A);
-  //   }
-
-  //   std::vector<double> vals;
-  //   int M1 = 2;
-  //   int M2 = 6;
-  //   A.get_diag_part(vals, M1, M2);
-
-  //   for(int j = 0; j < vals.size(); j++)
-  //     std::cout << vals[j] << " ";
-  //   std::cout << std::endl;
-  // }
-
-
-
-
-  std::cout <<
-    "Matrix library matrix operations test finished OK." << std::endl;
+  std::cout << "Matrix library matrix operations test finished OK." << std::endl;
 
   return 0;
 }

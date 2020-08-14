@@ -134,6 +134,30 @@ namespace hbsm {
 
 			bool self_frob_block_trunc(Treal trunc_value);
 
+			size_t get_n_blocks() const;
+
+			static void get_batches_multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
+			HierarchicalBlockSparseMatrix<Treal>& C,
+		  BatchMapMultiply & batches,
+			int dummy_levels);
+
+			static void get_batches_spamm(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
+			HierarchicalBlockSparseMatrix<Treal>& C,
+			const Treal tau,
+			bool updated,
+		  BatchMapMultiply & batches,
+			int dummy_levels);
+
+			HierarchicalBlockSparseMatrix<Treal>* get_matrix_ptr_by_position_code(const std::string & position_code);
+
+			static void multiply_batches(HierarchicalBlockSparseMatrix<Treal> const& A, HierarchicalBlockSparseMatrix<Treal> const& B,
+			HierarchicalBlockSparseMatrix<Treal>& C,
+		  BatchMapMultiply & batches);
+
+			static void remove_dummy_levels(HierarchicalBlockSparseMatrix<Treal> & C, int n_dummy_levels);
+
+			bool check_if_sizes_correspond_to_level();
+
 	public:
 			struct Params {
 			  int blocksize;
@@ -310,11 +334,6 @@ namespace hbsm {
 				   int n,
 				   int blocksize) { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::submatrix_inv_chol: function not yet implemented."); }
 
-
-			static void remove_dummy_levels(HierarchicalBlockSparseMatrix<Treal> & C, int n_dummy_levels);
-
-			bool check_if_sizes_correspond_to_level();
-
 			bool check_if_matrix_is_consistent() const;
 
 			static bool worth_to_multiply(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B,const bool tB);
@@ -341,30 +360,12 @@ namespace hbsm {
       HierarchicalBlockSparseMatrix<Treal> const & B,
             const bool first_transposed,
       HierarchicalBlockSparseMatrix<Treal> & C){throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::symm_product: function not applicable.");};
-
-			static void get_batches_multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
-			HierarchicalBlockSparseMatrix<Treal>& C,
-		  BatchMapMultiply & batches,
-			int dummy_levels);
-
-			static void get_batches_spamm(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
-			HierarchicalBlockSparseMatrix<Treal>& C,
-			const Treal tau,
-			bool updated,
-		  BatchMapMultiply & batches,
-			int dummy_levels);
-
-			HierarchicalBlockSparseMatrix<Treal>* get_matrix_ptr_by_position_code(const std::string & position_code);
-
-			static void multiply_batches(HierarchicalBlockSparseMatrix<Treal> const& A, HierarchicalBlockSparseMatrix<Treal> const& B,
-			HierarchicalBlockSparseMatrix<Treal>& C,
-		  BatchMapMultiply & batches);
 	};
 
 	template<class T>
-	void append_to_list(std::list<T> & list_append_to, std::list<T> & appended_list){
-		list_append_to.splice(list_append_to.end(), appended_list);
-	}
+		void append_to_list(std::list<T> & list_append_to, std::list<T> & appended_list){
+			list_append_to.splice(list_append_to.end(), appended_list);
+		}
 
 	template <typename T>
 		std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
@@ -2203,6 +2204,10 @@ namespace hbsm {
 					*no_of_block_multiplies = batches.size();
 				}
 
+				if(no_of_resizes != NULL){
+					*no_of_resizes = C.get_n_blocks();
+				}
+
 				C.n_block_multiplies = batches.size();
 
 				return;
@@ -4002,6 +4007,10 @@ template<class Treal>
 
 				if(no_of_block_multiplies != NULL){
 					*no_of_block_multiplies = batches.size();
+				}
+
+				if(no_of_resizes != NULL){
+					*no_of_resizes = C.get_n_blocks();
 				}
 
 				C.n_block_multiplies = batches.size();
@@ -7327,6 +7336,23 @@ template<class Treal>
 
 
 				}
+
+		template<class Treal>
+			size_t HierarchicalBlockSparseMatrix<Treal>::get_n_blocks() const{
+
+				if(lowest_level()){
+					return 1;
+				}
+
+				size_t sum = 0;
+
+				if(children[0] != NULL) sum += children[0]->get_n_blocks();
+				if(children[1] != NULL) sum += children[1]->get_n_blocks();
+				if(children[2] != NULL) sum += children[2]->get_n_blocks();
+				if(children[3] != NULL) sum += children[3]->get_n_blocks();
+
+				return sum;
+			}
 
 } /* end namespace hbsm */
 
