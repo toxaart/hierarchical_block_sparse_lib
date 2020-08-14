@@ -13,7 +13,6 @@
 #include <vector>
 #include <list>
 #include <iterator>
-//#include <forward_list>
 #include <stdexcept>
 #include <cstring>
 #include <iostream>
@@ -28,12 +27,7 @@
 #include <memory>
 #include <unordered_map>
 #include <map>
-#if BUILD_WITH_CUDA
-#include <cuda_runtime.h>
-#include <cublas_v2.h>
-#include "CudaManager.h"
-#include "CudaSyncPtr.h"
-#endif
+
 
 #define USE_BATCH_MULTIPLY 1
 
@@ -60,12 +54,12 @@ namespace hbsm {
 			HierarchicalBlockSparseMatrix<real>* parent; // way to go to top level;
 			/*		child0 | child2
 			 * 		--------------
-			 *      child1 | child3
+			 *    child1 | child3
 			 *
 			 * */
 
-			std::vector<Treal> submatrix; // actual data is here if lowest level, otherwise is empty.
-
+			 // actual data is here if lowest level, otherwise is empty.
+			std::vector<Treal> submatrix;
 
 			struct Transpose{
 				  const char              *bt;
@@ -75,6 +69,7 @@ namespace hbsm {
 				  static Transpose        T() { return Transpose("T", true); }
 			};
 
+      // struct for batched multiply
 			struct GemmTriplet {
 				const HierarchicalBlockSparseMatrix<real>* a;
 				const HierarchicalBlockSparseMatrix<real>* b;
@@ -96,11 +91,12 @@ namespace hbsm {
 
 			typedef std::unordered_multimap<std::string, GemmTriplet> BatchMapMultiply;
 
-
+			// check if this is the lowest level of hierarchy
 			bool lowest_level() const {
 				return (nRows == blocksize) && (nCols == blocksize) && !children_exist();
 			}
 
+			//get single element
 			Treal get_single_value(int row, int col) const;
 
 			// computes the distance in the hierarchy from top level to current.
@@ -113,14 +109,17 @@ namespace hbsm {
       int get_first_col_position() const;
       int get_first_row_position() const;
 
-      bool on_right_boundary() const; // for any level!
+			// check if submatrix lies on a boundary, for any level
+      bool on_right_boundary() const;
       bool on_bottom_boundary() const;
 
+			// get a pointer to a submatrix
 			const Treal *get_submatrix_ptr() const {
 				if(lowest_level())return &submatrix[0];
 				else return NULL;
 			}
 
+			// get a pointer to a submatrix for modification
 			Treal *get_submatrix_ptr_for_modification() {
 				if(lowest_level()) return &submatrix[0];
 				else return NULL;
@@ -130,17 +129,22 @@ namespace hbsm {
 			static void add_to_first(HierarchicalBlockSparseMatrix<Treal> & first, HierarchicalBlockSparseMatrix<Treal> & second,
 													size_t* no_of_resizes = NULL);
 
+			// function collides trees and allocates the output matrix for multiplication
 			static void collide_trees(HierarchicalBlockSparseMatrix<Treal> & first, HierarchicalBlockSparseMatrix<Treal> & second);
 
+			// matrix truncates itself
 			bool self_frob_block_trunc(Treal trunc_value);
 
+			// function for counting number of allocated blocks in the matrix
 			size_t get_n_blocks() const;
 
+			// compute all triplets which are to be done to perform multiplication
 			static void get_batches_multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
 			HierarchicalBlockSparseMatrix<Treal>& C,
 		  BatchMapMultiply & batches,
 			int dummy_levels);
 
+			// compute all triplets which are to be done to perform spamm
 			static void get_batches_spamm(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
 			HierarchicalBlockSparseMatrix<Treal>& C,
 			const Treal tau,
@@ -148,14 +152,18 @@ namespace hbsm {
 		  BatchMapMultiply & batches,
 			int dummy_levels);
 
+			// get submatrix pointer by a position code
 			HierarchicalBlockSparseMatrix<Treal>* get_matrix_ptr_by_position_code(const std::string & position_code);
 
+			// perform multiplications of all triplets
 			static void multiply_batches(HierarchicalBlockSparseMatrix<Treal> const& A, HierarchicalBlockSparseMatrix<Treal> const& B,
 			HierarchicalBlockSparseMatrix<Treal>& C,
 		  BatchMapMultiply & batches);
 
+			// remove dummy levels in the matrix if any
 			static void remove_dummy_levels(HierarchicalBlockSparseMatrix<Treal> & C, int n_dummy_levels);
 
+			// check if sizes computed correctly
 			bool check_if_sizes_correspond_to_level();
 
 	public:
@@ -172,27 +180,40 @@ namespace hbsm {
 				if(submatrix.size() > 0) submatrix.clear();
 			}
 
+			//returns n_rows in root matrix, can be called from any level still gives results for root matrix
+			int get_n_rows() const;
 
+			//returns n_cols in root matrix, can be called from any level still gives results for root matrix
+			int get_n_cols() const;
 
-			int get_n_rows() const; //returns n_rows in ORIGINAL matrix, can be called from any level still gives results for original matrix
-			int get_n_cols() const; //returns n_cols in ORIGINAL matrix, can be called from any level still gives results for original matrix
 			void set_params(Params const & param);
+
 			Params get_params() const;
+
 			bool children_exist() const;
+
 			bool empty() const;
+
 			void resize(int nRows_, int nCols_, size_t* no_of_resizes = NULL);
+
 			void clear();
+
 			void assign_from_vectors_general(const std::vector<int> & rows,
 				     const std::vector<int> & cols,
 				     const std::vector<Treal> & values,
 				     bool useMax,
 					 bool boundaries_checked);
+
 			void assign_from_vectors(const std::vector<int> & rows,
 				     const std::vector<int> & cols,
 				     const std::vector<Treal> & values);
+
+			// assign from vectors, use max if there are repeating elements
 			void assign_from_vectors_max(const std::vector<int> & rows,
 				     const std::vector<int> & cols,
 				     const std::vector<Treal> & values);
+
+			// calculate squared Frobenius norm
 			Treal get_frob_squared() const;
 
 			Treal get_frob_norm_squared_internal() const {return frob_norm_squared_internal;}
@@ -201,10 +222,12 @@ namespace hbsm {
 
 			void set_n_block_multiplicaitons(size_t n) {n_block_multiplies = n;}
 
+			// goes through the hierarchy and updates squared frob norms on each level
 			void update_internal_info();
 
 			size_t get_nnz() const;
 
+			// number of levels in the hierarchy
 			int get_depth() const;
 
 			int expected_depth() const;
@@ -220,11 +243,14 @@ namespace hbsm {
 
 			size_t get_size() const;
 
+			// write to and assign from a buffer, buffer then can be sent over network
 			void write_to_buffer ( char * dataBuffer, size_t const bufferSize ) const;
 			void assign_from_buffer (const char * dataBuffer, size_t const bufferSize );
 
+			// empty function, for compatibility
 			static void allocate_work_buffers(int max_dimension, int max_blocksize){}
 
+			// deep copy
 			void copy(const HierarchicalBlockSparseMatrix<Treal> & other, size_t* no_of_resizes = NULL);
 
 			void add_scaled_identity( HierarchicalBlockSparseMatrix<Treal> const & other, Treal alpha);
@@ -233,8 +259,7 @@ namespace hbsm {
 													HierarchicalBlockSparseMatrix<Treal> & C,
 													size_t* no_of_resizes = NULL);
 
-
-
+			// multiplication, by default uses batched method.
 			static void multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
 			HierarchicalBlockSparseMatrix<Treal>& C,
 			size_t* no_of_block_multiplies = NULL,
@@ -242,7 +267,10 @@ namespace hbsm {
 
 			void rescale(HierarchicalBlockSparseMatrix<Treal> const& other, Treal alpha);
 
+			// calculate inverse cholesky factor
 			static void inv_chol(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & Z);
+
+			// empty function, for compatibility
 			static void inv_chol_trunc(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & Z,
 			Treal trunc_value){ throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::inv_chol_trunc: function not yet implemented."); }
 
@@ -251,6 +279,7 @@ namespace hbsm {
 
 			static void symm_square(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & C);
 
+			// symmetric update of rank k
 			static void symm_rk(HierarchicalBlockSparseMatrix<Treal> const & A, bool transposed, HierarchicalBlockSparseMatrix<Treal> & C);
 
 			static void transpose(HierarchicalBlockSparseMatrix<Treal> const & A, HierarchicalBlockSparseMatrix<Treal> & C);
@@ -275,6 +304,7 @@ namespace hbsm {
 				}
 			}
 
+			// sparse approximate matrix product
 			static void spamm(HierarchicalBlockSparseMatrix<Treal> const & A, bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, bool tB,
 			HierarchicalBlockSparseMatrix<Treal>& C,
 			const Treal tau,
@@ -282,83 +312,121 @@ namespace hbsm {
 			size_t* no_of_block_multiplies = NULL,
 			size_t* no_of_resizes = NULL);
 
+			// fille with random blocks
 			void random_blocks(size_t nnz_blocks);
 
 			static int get_blocksize(Params const & param, int max_dimension){return param.blocksize;}
 
+			// dummy function, for compatibility
 			void get_col_sums(std::vector<Treal> & res) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_col_sums: function not yet implemented."); }
+
+			// dummy function, for compatibility
 			void get_col_sums_part(std::vector<Treal> & res, const int row_start, const int row_end) const {throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_col_sums_part: function not yet implemented.");}
+
+			// dummy function, for compatibility
 			void get_row_sums(std::vector<Treal> & res) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_row_sums: function not yet implemented."); }
+
+			// dummy function, for compatibility
 			void get_row_sums_part(std::vector<Treal> & res, const int col_start, const int col_end) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_row_sums_part: function not yet implemented."); }
+
+			// dummy function, for compatibility
 			void get_diag(std::vector<Treal> & res) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_diag: function not yet implemented."); }
+
+			// dummy function, for compatibility
 			void get_diag_part(std::vector<Treal> & res, int row_start, int row_end) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_diag_part: function not yet implemented."); }
+
+
 			void get_frob_squared_of_error_matrix(std::vector<Treal> & frob_squared_of_error_matrix,
 					  std::vector<Treal> const & trunc_values) const;
 
+			// dummy function, for compatibility
 			void get_spectral_squared_of_error_matrix(std::vector<Treal> & spectral_squared_of_error_matrix,
 					      std::vector<Treal> const & trunc_values,
 					      int diag, bool tr) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_spectral_squared_of_error_matrix: function not yet implemented."); }
 
+			// dummy function, for compatibility
 			Treal get_frob_squared_symm() const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_frob_squared_symm: function not yet implemented."); }
 
+			// dummy function, for compatibility
 			void get_frob_squared_of_error_matrix_symm(std::vector<Treal> & frob_squared_of_error_matrix,
 					       std::vector<Treal> const & trunc_values) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_frob_squared_of_error_matrix_symm: function not yet implemented."); }
 
+			// remove blocks with norm < trunc_value
 			bool frob_block_trunc(HierarchicalBlockSparseMatrix<Treal> & matrix_truncated, Treal trunc_value) const;
+
+			// dummy function, for compatibility
 			bool frob_block_trunc_symm(HierarchicalBlockSparseMatrix<Treal> & matrix_truncated, Treal trunc_value) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::frob_block_trunc_symm: function not yet implemented."); }
+
+			// dummy function, for compatibility
 			void set_neg_to_zero(const HierarchicalBlockSparseMatrix<Treal> & other) { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::get_row_sums_part: function not yet implemented."); }
+
+			// dummy function, for compatibility
 			static void max(HierarchicalBlockSparseMatrix<Treal> const & A,
 		    HierarchicalBlockSparseMatrix<Treal> const & B,
 		    HierarchicalBlockSparseMatrix<Treal> & C) { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::max: function not yet implemented."); }
 
+			// dummy function, for compatibility
 			Treal spectral_norm(int diag = 0, bool tr = false) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::spectral_norm: function not yet implemented."); }
+
 
 			void get_nnz_in_submatrix(std::vector<int> & rows,
 			      std::vector<int> & cols,
 			      std::vector<Treal> & vals,
 			      int M1, int M2, int N1, int N2) const { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::spectral_norm: function not yet implemented."); }
 
+			// dummy function, for compatibility
 			static void symm_rk_TN(HierarchicalBlockSparseMatrix<Treal> const & A,
 			   HierarchicalBlockSparseMatrix<Treal> & C) { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::symm_rk_TN: function not yet implemented."); }
 
+			// dummy function, for compatibility
 			static void symm_rk_NT(HierarchicalBlockSparseMatrix<Treal> const & A,
 			   HierarchicalBlockSparseMatrix<Treal> & C) { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::symm_rk_NT: function not yet implemented."); }
 
+
+			// dummy function, for compatibility
 			void symm_to_nosymm() { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::symm_to_nosymm: function not yet implemented."); }
 
 			// Set lower triangle to zero
 			void nosymm_to_symm() { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::nosymm_to_symm: function not yet implemented."); }
 
+			// dummy function, for compatibility
 			static void submatrix_inv_chol(std::vector<real> const & A,
 				   std::vector<real> & Z,
 				   int n,
 				   int blocksize) { throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::submatrix_inv_chol: function not yet implemented."); }
 
+			// check if all submatrices have correct sizes
 			bool check_if_matrix_is_consistent() const;
 
+			// recursively check if layout of children gives non-zero result
 			static bool worth_to_multiply(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B,const bool tB);
 
+			// recursively check if layout of children gives non-zero result, same for approx pruduct
 			static bool worth_to_spamm(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, const Treal tau);
 
+			// count how many multiplications were skipped
 			static std::vector<unsigned long int> count_skips(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus, const bool & apply_truncation, const bool & apply_spamm);
 
+			// aux func
 			static std::vector<unsigned long int> sum_skips(std::vector<unsigned long int> const & curr_level_skips, std::vector<std::vector<unsigned long int> > const & sub_skips);
 
 			Treal get_max_abs_value() const;
 
 			static std::vector<Treal> get_errors_of_approx_multiplication(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus, const bool & apply_truncation, const bool & apply_spamm);
 
+			// calculate errors which will be done in approx product if it is done with given thresholds
 			static std::vector<Treal> get_spamm_errors(HierarchicalBlockSparseMatrix<Treal> const & A, const bool tA, HierarchicalBlockSparseMatrix<Treal> const & B, const bool tB, std::vector<Treal> const & taus);
 
 			static std::vector<Treal> sum_spamm_errors(std::vector<real> const & curr_level_errors, std::vector<std::vector<real> > const & sub_errors);
 
+			// dummy function, for compatibility
       static void anticommutator(HierarchicalBlockSparseMatrix<Treal> const & A,
       HierarchicalBlockSparseMatrix<Treal> const & B,
       HierarchicalBlockSparseMatrix<Treal> & C){throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::anticommutator: function not applicable.");};
 
+			// dummy function, for compatibility
       static void symm_product(HierarchicalBlockSparseMatrix<Treal> const & A,
-      HierarchicalBlockSparseMatrix<Treal> const & B,
-            const bool first_transposed,
+      HierarchicalBlockSparseMatrix<Treal> const & B,const bool first_transposed,
       HierarchicalBlockSparseMatrix<Treal> & C){throw std::runtime_error("Error in HierarchicalBlockSparseMatrix<Treal>::symm_product: function not applicable.");};
 	};
 
