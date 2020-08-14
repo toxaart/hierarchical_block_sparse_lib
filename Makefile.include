@@ -1,5 +1,6 @@
 CC=g++
 BUILD_WITH_CUDA=0
+BLASFLAGS=-lblas -llapack
 
 ifeq ($(BUILD_WITH_CUDA),1)
 CXXFLAGS=-O3 -m64 -I/usr/local/cuda/include -DBUILD_WITH_CUDA=$(BUILD_WITH_CUDA) -std=c++11
@@ -9,15 +10,8 @@ CXXFLAGS=-O3 -std=c++11
 LDFLAGS= 
 endif
 
-BSMPATH=$(realpath $(TOPDIR)/source)
-BSMINCL=-I$(BSMPATH)
-BSMDIR=$(BSMPATH)
+HBSMPATH=$(realpath $(TOPDIR)/source)
+HBSMINCL=-I$(HBSMPATH)
+HBSMDIR=$(HBSMPATH)
 
-CUDAUTILSPATH=$(realpath $(TOPDIR)/../utilities/cuda_utils/source)
-CUDAUTILSINCL=-I$(CUDAUTILSPATH)
-CUDAUTILSDIR=$(CUDAUTILSPATH)
-
-GBLASPATH=$(realpath $(TOPDIR)/../utilities/gblas/source)
-GBLASINCL=-I$(GBLASPATH)
-GBLASDIR=$(GBLASPATH)
 
