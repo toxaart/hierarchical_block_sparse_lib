@@ -1,11 +1,11 @@
 /* Block-Sparse-Matrix-Lib, version 1.0. A block sparse matrix library.
  * Copyright (C) Emanuel H. Rubensson <emanuelrubensson@gmail.com>,
- *               Elias Rudberg <eliasrudberg@gmail.com>, 
+ *               Elias Rudberg <eliasrudberg@gmail.com>,
  *               Anastasia Kruchinina <anastasia.kruchinina@it.uu.se>, and
  *               Anton Artemov anton.artemov@it.uu.se.
- * 
+ *
  * Distribution without copyright owners' explicit consent prohibited.
- * 
+ *
  * This source code is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -503,8 +503,9 @@ static int test_operations() {
 		MatrixType::multiply(B_3level, true, A_2level, false, BT_3level_times_A_2level);
     std::cout << "BT_3level_times_A_2level n muls after = " << BT_3level_times_A_2level.get_n_block_multiplications() << std::endl;
 		verify_that_matrices_are_equal(BT_3level_times_A_2level, BT_3level_times_A_2level_ref);
+#ifdef USE_BATCH_MULTIPLY
 		assert(BT_3level_times_A_2level.get_n_block_multiplications() == 12);
-
+#endif
 	}
 
 	// test rescale

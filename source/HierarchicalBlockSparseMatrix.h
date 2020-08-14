@@ -28,9 +28,6 @@
 #include <unordered_map>
 #include <map>
 
-
-#define USE_BATCH_MULTIPLY 1
-
 // Use namespace hbsm: "hierarchical block sparse matrix library".
 namespace hbsm {
 
@@ -2145,7 +2142,7 @@ namespace hbsm {
 		void HierarchicalBlockSparseMatrix<Treal>::multiply(HierarchicalBlockSparseMatrix<Treal> const& A, bool tA, HierarchicalBlockSparseMatrix<Treal> const& B, bool tB,
                         HierarchicalBlockSparseMatrix<Treal>& C, size_t* no_of_block_multiplies, size_t* no_of_resizes){
 
-#if USE_BATCH_MULTIPLY
+#ifdef USE_BATCH_MULTIPLY
 
 				std::unordered_multimap<std::string, GemmTriplet> batches;
 
@@ -3935,7 +3932,7 @@ template<class Treal>
                         HierarchicalBlockSparseMatrix<Treal>& C, const Treal tau, bool updated, size_t* no_of_block_multiplies, size_t* no_of_resizes){
 
 
-#if USE_BATCH_MULTIPLY
+#ifdef USE_BATCH_MULTIPLY
 
 				std::unordered_multimap<std::string, GemmTriplet> batches;
 
