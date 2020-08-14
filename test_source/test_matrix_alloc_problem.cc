@@ -1,10 +1,9 @@
-/* Block-Sparse-Matrix-Lib, version 1.0. A block sparse matrix library.
- * Copyright (C) Emanuel H. Rubensson <emanuelrubensson@gmail.com>,
- *               Elias Rudberg <eliasrudberg@gmail.com>, and
- *               Anastasia Kruchinina <anastasia.kruchinina@it.uu.se>.
- * 
+/* Hierarchical-Block-Sparce-Lib, version 1.0. A hierarchical block sparse matrix library..
+ * Copyright (C) Anton Artemov anton.artemov@it.uu.se.
+ *
+ *
  * Distribution without copyright owners' explicit consent prohibited.
- * 
+ *
  * This source code is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -33,7 +32,7 @@ static int test_creation(int N, int blockSize, double nonzeroFraction, int nMat,
     if(!M1.empty())
     throw std::runtime_error("Error: M.empty() gave wrong result.");
     M1.resize(3, 7);
-    
+
     if(M1.empty())
     throw std::runtime_error("Error: M.empty() gave wrong result.");
     M1.clear();
@@ -52,11 +51,11 @@ static int test_creation(int N, int blockSize, double nonzeroFraction, int nMat,
     // Allocate nMat matrices and do some operations with them.
     std::vector<MatrixType*> M_vec_1(nMat);
     for(int i = 0; i < nMat; i++) {
-        
+
         M_vec_1[i] = new MatrixType();
         M_vec_1[i]->set_params(param);
         M_vec_1[i]->resize(N, N);
-        
+
         // Test assign_from_vectors()
         {
             int nValues = (int)((double)NN*NN*nonzeroFraction);
@@ -73,29 +72,29 @@ static int test_creation(int N, int blockSize, double nonzeroFraction, int nMat,
                     if(count == nValues)
                     break;
                 }
-                
+
                 if(count == nValues)
                 break;
             }
-            
+
             assert(count == nValues);
-            
+
             M_vec_1[i]->assign_from_vectors(rows, cols, values);
-            
+
             MatrixType C;
-            
+
             C.copy(*M_vec_1[i]);
             verify_that_matrices_are_equal(C, *M_vec_1[i]);
-            
+
         }
     }
-    
+
     // Now delete odd-numbered matrices (trying to create a fragmented memory situation).
     for(int i = 1; i < nMat; i+=2)
         delete M_vec_1[i];
-    
+
     int nMatHalf = nMat / 2;
-    
+
     // Now repeatedly create nMatHalf matrices and do some operations on them.
     for(int i = 0; i < nRep; i++) {
 
@@ -124,7 +123,7 @@ static int test_creation(int N, int blockSize, double nonzeroFraction, int nMat,
                   }
                   if(count == nValues)
                     break;
-                }   
+                }
                 assert(count == nValues);
                 M_vec_2[i]->assign_from_vectors(rows, cols, values);
             }
@@ -139,7 +138,7 @@ static int test_creation(int N, int blockSize, double nonzeroFraction, int nMat,
         for(int i = 0; i < nMatHalf; i++)
           delete M_vec_2[i];
     }
-    
+
     // Now delete even-numbered-numbered matrices (trying to create a fragmented memory situation).
     for(int i = 0; i < nMat; i+=2)
         delete M_vec_1[i];

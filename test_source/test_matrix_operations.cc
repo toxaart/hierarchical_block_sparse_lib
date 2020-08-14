@@ -1,7 +1,6 @@
-/* Block-Sparse-Matrix-Lib, version 1.0. A block sparse matrix library.
- * Copyright (C) Emanuel H. Rubensson <emanuelrubensson@gmail.com>,
- *               Elias Rudberg <eliasrudberg@gmail.com>, and
- *               Anastasia Kruchinina <anastasia.kruchinina@it.uu.se>.
+/* Hierarchical-Block-Sparce-Lib, version 1.0. A hierarchical block sparse matrix library..
+ * Copyright (C) Anton Artemov anton.artemov@it.uu.se.
+ *
  *
  * Distribution without copyright owners' explicit consent prohibited.
  *
