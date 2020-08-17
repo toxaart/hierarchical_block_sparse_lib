@@ -7236,37 +7236,47 @@ template<class Treal>
 					return cur_ptr;
 				}
 
-		template<class Treal>
-		 void HierarchicalBlockSparseMatrix<Treal>::multiply_batches(HierarchicalBlockSparseMatrix<Treal> const& A, HierarchicalBlockSparseMatrix<Treal> const& B,
-			HierarchicalBlockSparseMatrix<Treal>& C, BatchMapMultiply & batches){
+			template<class Treal>
+			 	void HierarchicalBlockSparseMatrix<Treal>::multiply_batches(HierarchicalBlockSparseMatrix<Treal> const& A, HierarchicalBlockSparseMatrix<Treal> const& B,
+					HierarchicalBlockSparseMatrix<Treal>& C, BatchMapMultiply & batches){
 
-				const Treal ONE = 1.0;
+					const Treal ONE = 1.0;
 
-				for(auto i = batches.begin(); i != batches.end(); ++i){
-					std::string position_code = i->first;
+					size_t n_buckets = batches.bucket_count();
 
-					const HierarchicalBlockSparseMatrix<Treal> *ptr_A = i->second.a;
-					const HierarchicalBlockSparseMatrix<Treal> *ptr_B = i->second.b;
+					//here one can place OpenMP pragma and get speedup, not possible that same key appears in two buckets
+					// alternative - use C++17 features such as execution, but it is not yet fully in GCC
+					#pragma omp parallel for schedule(dynamic,1)
+					for(size_t cur_bucket = 0; cur_bucket < n_buckets; ++cur_bucket){
 
-					const Treal *aptr = ptr_A->get_submatrix_ptr();
-					const Treal *bptr = ptr_B->get_submatrix_ptr();
-					Treal *cptr;
+						for(auto i = batches.begin(cur_bucket); i != batches.end(cur_bucket); ++i){
 
-					if(C.lowest_level()){
-						cptr = C.get_submatrix_ptr_for_modification();
+							std::string position_code = i->first;
+
+							const HierarchicalBlockSparseMatrix<Treal> *ptr_A = i->second.a;
+							const HierarchicalBlockSparseMatrix<Treal> *ptr_B = i->second.b;
+
+							const Treal *aptr = ptr_A->get_submatrix_ptr();
+							const Treal *bptr = ptr_B->get_submatrix_ptr();
+							Treal *cptr;
+
+							if(C.lowest_level()){
+								cptr = C.get_submatrix_ptr_for_modification();
+							}
+							else{
+								HierarchicalBlockSparseMatrix<Treal> *ptr_C = C.get_matrix_ptr_by_position_code(i->first);
+								cptr = ptr_C->get_submatrix_ptr_for_modification();
+							}
+
+							int blocksize = C.blocksize;
+
+							gemm(i->second.ta, i->second.tb, &blocksize, &blocksize, &blocksize, &ONE, aptr, &blocksize, bptr, &blocksize, &ONE, cptr, &blocksize);
+
+						}
+
 					}
-					else{
-						HierarchicalBlockSparseMatrix<Treal> *ptr_C = C.get_matrix_ptr_by_position_code(i->first);
-						cptr = ptr_C->get_submatrix_ptr_for_modification();
-					}
-
-					int blocksize = C.blocksize;
-
-					gemm(i->second.ta, i->second.tb, &blocksize, &blocksize, &blocksize, &ONE, aptr, &blocksize, bptr, &blocksize, &ONE, cptr, &blocksize);
 
 				}
-
-			}
 
 			template<class Treal>
 				void HierarchicalBlockSparseMatrix<Treal>::collide_trees(HierarchicalBlockSparseMatrix<Treal> & first, HierarchicalBlockSparseMatrix<Treal> & second){
