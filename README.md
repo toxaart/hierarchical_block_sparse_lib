@@ -5,7 +5,7 @@ This matrix library is developed to effeiciently perform approximate multiplicat
 
 It has been used in conjunction with the Chunk and Tasks matrix library.
 
-The library is compeltely serial, but threading can be added using C++17 features if so desired. 
+The library is serial, but multiplication is parallelized with OpenMP, can be also done by means of C++17.
 
 References:
 1. [Fast Multiplication of Matrices with Decay](https://arxiv.org/abs/1011.3534)
